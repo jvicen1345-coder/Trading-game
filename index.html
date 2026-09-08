@@ -2,1176 +2,478 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Heatseeker Autopilot</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>HEATSEEKER — Broker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Typography only. If this fails (offline, file://) the system stacks below take over. -->
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="description" content="Start in your parents' basement. End as the city's best broker, the owner of the floor, or the hedge fund manager everyone hates.">
 <style>
-  :root{
-    --bg:#0A0C10; --panel:#12151B; --panel2:#171B22; --border:#242A34;
-    --text:#E7EAEE; --dim:#8890A0; --faint:#4B5261;
-    --gold:#E8B85C; --gold-dim:#8A6E3A; --violet:#8B6BFF; --violet-dim:#564489;
-    --green:#46C98A; --red:#FF5C68; --amber-glow:rgba(232,184,92,.35);
-    --cyan:#3ECFCF;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;-webkit-font-smoothing:antialiased;}
-  .mono{font-family:'IBM Plex Mono',monospace;}
-  #app{display:flex;flex-direction:column;min-height:100vh;}
-  header{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#13161C,#0F1218);flex-wrap:wrap;}
-  .brand{display:flex;align-items:center;gap:9px;margin-right:auto;}
-  .brand .mark{width:24px;height:24px;border-radius:6px;background:conic-gradient(from 220deg,var(--gold),var(--violet),var(--gold));box-shadow:0 0 12px var(--amber-glow);}
-  .brand h1{font-size:14px;font-weight:600;margin:0;letter-spacing:.3px;}
-  .brand span{display:block;font-size:9px;color:var(--dim);font-weight:400;letter-spacing:.5px;}
-  .badge{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:600;letter-spacing:.4px;border:1px solid var(--border);}
-  .badge.paper{color:var(--gold);border-color:var(--gold-dim);background:rgba(232,184,92,.08);}
-  .badge.live{color:var(--red);border-color:#7a2a30;background:rgba(255,92,104,.1);}
-  .badge.halted{color:var(--red);border-color:#7a2a30;background:rgba(255,92,104,.2);animation:pulse 1s infinite;}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-  .session-bar{display:flex;align-items:center;gap:6px;padding:3px 9px;border-radius:7px;border:1px solid var(--border);background:var(--panel);font-size:10px;font-family:'IBM Plex Mono',monospace;}
-  .session-bar .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
-  .session-bar .dot.open{background:var(--green);box-shadow:0 0 5px var(--green);}
-  .session-bar .dot.closed{background:var(--faint);}
-  .session-bar .dot.spx{background:var(--violet);box-shadow:0 0 5px var(--violet);}
-  .session-pill{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;letter-spacing:.3px;border:1px solid;}
-  .session-pill.open{color:var(--green);border-color:#1d5c40;background:rgba(70,201,138,.08);}
-  .session-pill.spx-only{color:var(--violet);border-color:var(--violet-dim);background:rgba(139,107,255,.08);}
-  .session-pill.closed{color:var(--faint);border-color:var(--faint);background:transparent;}
-  .candle-pill{font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700;border:1px solid;font-family:'IBM Plex Mono',monospace;}
-  .candle-pill.green{color:var(--green);border-color:#1d5c40;background:rgba(70,201,138,.1);}
-  .candle-pill.red{color:var(--red);border-color:#7a2a30;background:rgba(255,92,104,.1);}
-  .candle-pill.flat{color:var(--faint);border-color:var(--faint);background:transparent;}
-  .vix-pill{font-size:9px;padding:2px 7px;border-radius:4px;font-weight:600;border:1px solid;font-family:'IBM Plex Mono',monospace;}
-  .vix-pill.ok{color:var(--green);border-color:#1d5c40;background:rgba(70,201,138,.08);}
-  .vix-pill.warn{color:var(--gold);border-color:var(--gold-dim);background:rgba(232,184,92,.08);}
-  .vix-pill.halt{color:var(--red);border-color:#7a2a30;background:rgba(255,92,104,.1);}
-  .stat{font-size:10px;color:var(--dim);text-align:right;}
-  .stat b{display:block;font-size:12px;color:var(--text);font-family:'IBM Plex Mono',monospace;}
-  .stat b.pos{color:var(--green);}
-  .stat b.neg{color:var(--red);}
-  .stat b.warn{color:var(--gold);}
-  button{font-family:inherit;cursor:pointer;border-radius:7px;border:1px solid var(--border);background:var(--panel2);color:var(--text);padding:6px 11px;font-size:11px;font-weight:600;letter-spacing:.2px;transition:all .15s;}
-  button:hover{border-color:var(--faint);}
-  button.kill{background:#3a1418;border-color:#7a2a30;color:#ff8890;}
-  button.arm{background:rgba(232,184,92,.1);border-color:var(--gold-dim);color:var(--gold);}
-  button.save-key{background:rgba(70,201,138,.1);border-color:#1d5c40;color:var(--green);width:100%;margin-top:4px;}
-  .layout{display:grid;grid-template-columns:255px 1fr 315px;gap:1px;background:var(--border);flex:1;min-height:0;}
-  .panel{background:var(--bg);overflow-y:auto;padding:11px;}
-  .panel h2{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin:0 0 8px;}
-  .tick-card{border:1px solid var(--border);border-radius:9px;padding:9px;margin-bottom:7px;cursor:pointer;background:var(--panel);transition:border-color .15s;}
-  .tick-card:hover{border-color:var(--faint);}
-  .tick-card.active{border-color:var(--gold);}
-  .tick-card.gated{opacity:.4;}
-  .tick-card.blocked{opacity:.3;border-style:dashed;}
-  .tick-row{display:flex;justify-content:space-between;align-items:baseline;}
-  .tick-sym{font-weight:700;font-size:13px;}
-  .tick-price{font-family:'IBM Plex Mono',monospace;font-size:11px;}
-  .tick-tags{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap;}
-  .tag{font-size:8px;padding:2px 5px;border-radius:4px;border:1px solid var(--border);color:var(--dim);}
-  .tag.regime-expansion{color:var(--red);border-color:#7a2a30;}
-  .tag.regime-compression{color:var(--cyan);border-color:#1d5c5c;}
-  .tag.regime-transition{color:var(--gold);border-color:var(--gold-dim);}
-  .tag.regime-trending{color:var(--green);border-color:#1d5c40;}
-  .tag.pattern-king{color:var(--gold);border-color:var(--gold-dim);}
-  .tag.pattern-void{color:var(--violet);border-color:var(--violet-dim);}
-  .tag.pattern-ladder{color:var(--green);border-color:#1d5c40;}
-  .tag.pattern-flip{color:var(--red);border-color:#7a2a30;}
-  .tag.pattern-compression{color:var(--cyan);border-color:#1d5c5c;}
-  .score-bar{height:3px;border-radius:2px;background:var(--border);margin-top:5px;overflow:hidden;}
-  .score-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--violet),var(--gold));}
-  .trinity-row{display:flex;gap:3px;margin-top:4px;}
-  .trinity-dot{width:7px;height:7px;border-radius:50%;border:1px solid var(--border);}
-  .trinity-dot.bull{background:var(--green);}
-  .trinity-dot.bear{background:var(--red);}
-  .trinity-dot.neut{background:var(--faint);}
-  .ladder-wrap{border:1px solid var(--border);border-radius:11px;padding:13px;background:var(--panel);margin-bottom:11px;}
-  .ladder-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
-  .ladder-head h3{margin:0;font-size:14px;}
-  .ladder-head .px{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;}
-  svg text{font-family:'IBM Plex Mono',monospace;}
-  #ladderSvg{display:block;width:100%;max-width:620px;aspect-ratio:520/380;height:auto;margin:0 auto;}
-  .stop-timer{display:inline-block;padding:3px 7px;border-radius:5px;font-size:10px;font-weight:600;background:rgba(255,92,104,.15);border:1px solid #7a2a30;color:var(--red);font-family:'IBM Plex Mono',monospace;}
-  .trail-badge{display:inline-block;padding:3px 7px;border-radius:5px;font-size:10px;font-weight:600;background:rgba(70,201,138,.12);border:1px solid #1d5c40;color:var(--green);font-family:'IBM Plex Mono',monospace;}
-  .reasons{font-size:11px;color:var(--dim);line-height:1.75;}
-  .reasons b{color:var(--text);}
-  .vote-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin:7px 0;}
-  .vote-cell{background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:5px 7px;font-size:10px;}
-  .vote-cell .label{color:var(--faint);font-size:8px;text-transform:uppercase;letter-spacing:.5px;}
-  .vote-cell .val{font-family:'IBM Plex Mono',monospace;font-weight:600;margin-top:2px;font-size:11px;}
-  .vote-cell .val.bull{color:var(--green);}
-  .vote-cell .val.bear{color:var(--red);}
-  .vote-cell .val.neut{color:var(--faint);}
-  .vote-cell .val.gold{color:var(--gold);}
-  .vote-cell .val.cyan{color:var(--cyan);}
-  .pos-card{border:1px solid var(--border);border-radius:9px;padding:9px;margin-bottom:7px;background:var(--panel);}
-  .pos-top{display:flex;justify-content:space-between;font-size:11px;font-weight:600;}
-  .pos-dir-call{color:var(--gold);}
-  .pos-dir-put{color:var(--violet);}
-  .pos-meta{font-size:9px;color:var(--dim);margin-top:3px;font-family:'IBM Plex Mono',monospace;line-height:1.6;}
-  .pos-pnl{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;margin-top:4px;}
-  .pos-status{font-size:9px;margin-top:3px;min-height:15px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
-  /* Performance panel */
-  .perf-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px;}
-  .perf-cell{background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:6px 8px;}
-  .perf-cell .label{font-size:8px;color:var(--faint);text-transform:uppercase;letter-spacing:.5px;}
-  .perf-cell .val{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;margin-top:2px;}
-  .trade-row{font-size:9px;font-family:'IBM Plex Mono',monospace;padding:3px 0;border-bottom:1px dashed rgba(255,255,255,.04);display:flex;justify-content:space-between;align-items:center;}
-  .trade-row .reason{color:var(--dim);}
-  .trade-row .pnl-pos{color:var(--green);}
-  .trade-row .pnl-neg{color:var(--red);}
-  /* Tabs */
-  .tab-bar{display:flex;gap:2px;margin-bottom:10px;background:var(--panel);border-radius:7px;padding:3px;}
-  .tab{flex:1;text-align:center;padding:5px;border-radius:5px;font-size:10px;font-weight:600;cursor:pointer;color:var(--dim);border:none;background:transparent;}
-  .tab.active{background:var(--panel2);color:var(--text);border:1px solid var(--border);}
-  .tab-content{display:none;}
-  .tab-content.active{display:block;}
-  .settings-block{border:1px solid var(--border);border-radius:9px;padding:9px;margin-bottom:9px;background:var(--panel);}
-  .settings-block label{display:block;font-size:10px;color:var(--dim);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;}
-  .settings-block input[type=text],.settings-block input[type=password],.settings-block input[type=number]{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:6px 8px;font-family:'IBM Plex Mono',monospace;font-size:11px;margin-bottom:4px;}
-  .settings-block input:focus{outline:none;border-color:var(--gold-dim);}
-  .settings-block small{color:var(--faint);display:block;margin-top:3px;line-height:1.5;font-size:9px;}
-  .key-status{font-size:9px;font-family:'IBM Plex Mono',monospace;padding:3px 7px;border-radius:4px;margin-top:5px;display:inline-block;}
-  .key-status.set{color:var(--green);background:rgba(70,201,138,.08);border:1px solid #1d5c40;}
-  .key-status.unset{color:var(--faint);background:transparent;border:1px solid var(--border);}
-  .conn-row{display:flex;align-items:center;gap:7px;font-size:10px;font-family:'IBM Plex Mono',monospace;margin-bottom:4px;}
-  .log-panel{grid-column:1/-1;border-top:1px solid var(--border);background:var(--panel);padding:7px 13px;height:170px;overflow-y:auto;}
-  .log-line{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim);padding:2px 0;border-bottom:1px dashed rgba(255,255,255,.03);}
-  .log-line .t{color:var(--faint);margin-right:7px;}
-  .log-line.enter{color:var(--gold);}
-  .log-line.exit-win{color:var(--green);}
-  .log-line.exit-loss{color:var(--red);}
-  .log-line.system{color:var(--violet);}
-  .log-line.warn{color:var(--gold);}
-  .log-line.trail{color:var(--green);}
-  .log-line.halt{color:var(--red);font-weight:600;}
-  ::-webkit-scrollbar{width:5px;}
-  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
-  .empty{color:var(--faint);font-size:11px;padding:14px 0;text-align:center;}
-  .risk-pill{font-size:8px;padding:2px 6px;border-radius:4px;border:1px solid;font-weight:600;}
-  .risk-naked{color:var(--gold);border-color:var(--gold-dim);background:rgba(232,184,92,.08);}
-  .zone-pill{font-size:8px;padding:2px 6px;border-radius:4px;border:1px solid;font-weight:600;}
-  .zone-above-cw{color:var(--red);border-color:#7a2a30;background:rgba(255,92,104,.08);}
-  .zone-pos-gex{color:var(--cyan);border-color:#1d5c5c;background:rgba(62,207,207,.08);}
-  .zone-neg-gex{color:var(--gold);border-color:var(--gold-dim);background:rgba(232,184,92,.08);}
-  .zone-below-pw{color:var(--violet);border-color:var(--violet-dim);background:rgba(139,107,255,.08);}
-  .event-badge{font-size:9px;padding:2px 7px;border-radius:4px;font-weight:600;background:rgba(255,92,104,.12);border:1px solid #7a2a30;color:var(--red);}
-  .halted-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(10,12,16,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;gap:16px;}
-  .halted-overlay h2{color:var(--red);font-size:22px;margin:0;}
-  .halted-overlay p{color:var(--dim);font-size:13px;margin:0;text-align:center;}
-  .halted-overlay button{padding:10px 24px;font-size:13px;}
+:root{
+  --bg:#07090D; --panel:#111520; --panel2:#171C28; --border:#232B3A;
+  --text:#E9EDF3; --dim:#8993A5; --faint:#4C5568;
+  --gold:#E8B85C; --violet:#8B6BFF; --cyan:#3ECFCF;
+  --green:#3FD68C; --red:#FF5B67; --amber:#FF8A3C;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'Space Grotesk',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;margin:0;overflow:hidden;}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none;
+}
+button{font-family:inherit;color:inherit;border:none;background:none;cursor:pointer;}
+.mono{font-family:var(--mono);}
+.dim{color:var(--dim);}
+.g{color:var(--green);} .r{color:var(--red);} .y{color:var(--gold);}
+
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;}
+
+/* ---------------- HUD ---------------- */
+#hud{position:fixed;inset:0;pointer-events:none;}
+#hud > *{pointer-events:auto;}
+
+.topbar{
+  position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:10px;
+  padding:8px 12px;background:linear-gradient(180deg,rgba(7,9,13,.92),rgba(7,9,13,0));
+}
+.brand{display:flex;align-items:center;gap:8px;}
+.mark{width:22px;height:22px;border-radius:6px;flex:0 0 auto;
+  background:conic-gradient(from 210deg,var(--gold),var(--violet),var(--cyan),var(--gold));
+  box-shadow:0 0 12px rgba(232,184,92,.35);}
+.brand b{font-size:12px;letter-spacing:1.4px;font-weight:700;}
+.chip{
+  display:flex;flex-direction:column;gap:1px;padding:4px 10px;border-radius:8px;
+  background:rgba(17,21,32,.82);border:1px solid var(--border);backdrop-filter:blur(6px);
+}
+.chip .k{font-size:8px;letter-spacing:1.2px;color:var(--faint);font-weight:700;}
+.chip .v{font-family:var(--mono);font-size:14px;font-weight:600;line-height:1.15;}
+.chip.wide .v{font-size:12px;}
+.spacer{flex:1 1 auto;}
+.icon{
+  width:30px;height:30px;border-radius:8px;display:grid;place-items:center;
+  background:rgba(17,21,32,.82);border:1px solid var(--border);color:var(--dim);font-size:13px;
+}
+.icon:hover{color:var(--text);border-color:var(--violet);}
+.icon.off{opacity:.42;}
+
+/* stat rail */
+.rail{
+  position:absolute;left:12px;top:56px;width:172px;display:flex;flex-direction:column;gap:5px;
+  padding:9px 10px;border-radius:11px;background:rgba(17,21,32,.80);
+  border:1px solid var(--border);backdrop-filter:blur(6px);
+}
+.srow{display:flex;align-items:center;gap:7px;}
+.srow .lbl{font-size:8.5px;letter-spacing:1px;color:var(--faint);font-weight:700;width:44px;flex:0 0 auto;}
+.srow .track{flex:1 1 auto;height:5px;border-radius:3px;background:#0A0D13;overflow:hidden;}
+.srow .fill{height:100%;width:0%;border-radius:3px;transition:width .25s;}
+.srow .num{font-family:var(--mono);font-size:10px;width:22px;text-align:right;color:var(--dim);}
+#barEnergy{background:linear-gradient(90deg,#2E7A55,var(--green));}
+#barSkill{background:linear-gradient(90deg,#3A6E8A,var(--cyan));}
+#barRep{background:linear-gradient(90deg,#8A6E3A,var(--gold));}
+#barHeat{background:linear-gradient(90deg,#7A3A2A,var(--red));}
+.srow.danger .lbl{color:var(--red);}
+.srow.danger .num{color:var(--red);}
+
+.objective{
+  position:absolute;left:12px;top:172px;width:236px;padding:8px 11px;border-radius:10px;
+  background:rgba(17,21,32,.80);border:1px solid var(--border);backdrop-filter:blur(6px);
+  font-size:11px;line-height:1.5;color:var(--dim);
+}
+.objective b{display:block;font-size:8.5px;letter-spacing:1.2px;color:var(--gold);margin-bottom:3px;}
+
+/* minimap */
+.mapwrap{
+  position:absolute;right:12px;top:56px;width:132px;height:132px;border-radius:11px;
+  overflow:hidden;border:1px solid var(--border);background:rgba(10,13,19,.9);
+  box-shadow:0 8px 26px rgba(0,0,0,.5);
+}
+#minimap{width:100%;height:100%;display:block;}
+
+/* interaction prompt */
+.prompt{
+  position:absolute;left:50%;bottom:88px;transform:translate(-50%,14px);
+  display:flex;align-items:center;gap:10px;padding:9px 15px;border-radius:11px;
+  background:rgba(17,21,32,.94);border:1px solid var(--gold);
+  box-shadow:0 8px 30px rgba(0,0,0,.6);opacity:0;transition:.18s;
+}
+.prompt.show{opacity:1;transform:translate(-50%,0);}
+.prompt kbd{
+  font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;
+  background:var(--gold);color:#1A1206;
+}
+.prompt span{font-size:13px;font-weight:600;}
+
+/* toasts */
+.toasts{position:absolute;right:12px;bottom:14px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;max-width:290px;}
+.toast{
+  padding:8px 12px;border-radius:9px;font-size:11.5px;line-height:1.45;
+  background:rgba(17,21,32,.94);border:1px solid var(--border);
+  box-shadow:0 6px 22px rgba(0,0,0,.5);animation:tin .28s cubic-bezier(.2,.9,.3,1);
+}
+.toast.good{border-color:#1E6B49;} .toast.bad{border-color:#7A2A32;}
+.toast.out{opacity:0;transform:translateX(14px);transition:.35s;}
+@keyframes tin{from{opacity:0;transform:translateX(16px);}}
+
+/* touch stick */
+.stick{display:none;position:absolute;left:22px;bottom:22px;width:118px;height:118px;border-radius:50%;
+  background:rgba(17,21,32,.5);border:1px solid var(--border);}
+.stick .knob{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;
+  background:rgba(232,184,92,.32);border:1px solid var(--gold);}
+.ibtn{display:none;position:absolute;right:22px;bottom:34px;width:78px;height:78px;border-radius:50%;
+  background:rgba(232,184,92,.16);border:2px solid var(--gold);color:var(--gold);
+  font-size:12px;font-weight:700;letter-spacing:1px;}
+body.touch .stick,body.touch .ibtn{display:block;}
+
+/* ---------------- panels / modals ---------------- */
+.sheet{
+  position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;
+  padding:20px;background:rgba(4,6,10,.72);backdrop-filter:blur(6px);overflow-y:auto;
+}
+.sheet.show{display:flex;}
+.card{
+  width:min(540px,100%);border-radius:15px;border:1px solid var(--border);
+  background:linear-gradient(170deg,#151A25,#0C1016);
+  box-shadow:0 26px 76px rgba(0,0,0,.72);padding:22px;
+  animation:cin .26s cubic-bezier(.2,.9,.3,1);
+}
+@keyframes cin{from{opacity:0;transform:translateY(12px) scale(.985);}}
+.card h2{margin:0 0 3px;font-size:20px;letter-spacing:1.2px;font-weight:700;}
+.card .sub{margin:0 0 14px;font-size:9px;letter-spacing:1.6px;color:var(--faint);font-weight:700;}
+.pbody{margin:0 0 11px;font-size:13px;line-height:1.65;color:#C4CBD6;}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:7px;margin:12px 0;}
+.stat{padding:8px 10px;border-radius:9px;background:rgba(255,255,255,.028);border:1px solid var(--border);}
+.stat .k{display:block;font-size:8px;letter-spacing:1.1px;color:var(--faint);font-weight:700;margin-bottom:3px;}
+.stat .v{font-family:var(--mono);font-size:13.5px;font-weight:600;}
+.stat .v.bad{color:var(--red);} .stat .v.good{color:var(--green);}
+
+.acts{display:flex;flex-direction:column;gap:7px;margin-top:14px;}
+.act{
+  display:flex;flex-direction:column;gap:2px;padding:11px 13px;border-radius:10px;text-align:left;
+  border:1px solid var(--border);background:rgba(255,255,255,.028);transition:.14s;position:relative;
+}
+.act:hover:not(.locked){border-color:var(--gold);background:rgba(232,184,92,.09);transform:translateX(2px);}
+.act .act-main{font-size:13.5px;font-weight:600;}
+.act .act-detail{font-size:11px;color:var(--dim);line-height:1.4;}
+.act .act-cost{font-family:var(--mono);font-size:10px;color:var(--gold);margin-top:2px;}
+.act .act-why{font-size:10px;color:var(--red);margin-top:3px;}
+.act.locked{opacity:.5;cursor:not-allowed;}
+.act.gold{border-color:var(--gold);background:rgba(232,184,92,.1);}
+.act.red:hover:not(.locked){border-color:var(--red);background:rgba(255,91,103,.1);}
+
+.closex{position:absolute;right:14px;top:12px;width:28px;height:28px;border-radius:8px;
+  color:var(--faint);font-size:16px;line-height:1;}
+.closex:hover{color:var(--text);background:rgba(255,255,255,.06);}
+.card{position:relative;}
+
+.btn{
+  display:block;width:100%;padding:12px;border-radius:10px;font-weight:700;font-size:13px;
+  letter-spacing:1.2px;margin-top:8px;border:1px solid #8A6E3A;color:#1A1206;
+  background:linear-gradient(180deg,#F0C670,var(--gold));transition:.14s;
+}
+.btn:hover{box-shadow:0 0 24px rgba(232,184,92,.34);transform:translateY(-1px);}
+.btn.ghost{background:transparent;color:var(--dim);border-color:var(--border);}
+.btn.ghost:hover{color:var(--text);border-color:var(--violet);box-shadow:none;}
+
+.modal-title{margin:0 0 10px;font-size:21px;letter-spacing:1.3px;font-weight:700;}
+.modal-title.good{color:var(--green);} .modal-title.bad{color:var(--red);}
+#modalBody p{margin:0 0 11px;font-size:13px;line-height:1.7;color:#C4CBD6;}
+.tallies{display:flex;flex-direction:column;gap:5px;margin:13px 0 4px;}
+.tally{display:flex;justify-content:space-between;align-items:baseline;padding:7px 11px;
+  border-radius:8px;background:rgba(255,255,255,.028);font-family:var(--mono);font-size:12.5px;}
+.tally .k{font-family:var(--sans);font-size:10.5px;color:var(--dim);font-weight:600;}
+
+.branches{display:flex;flex-direction:column;gap:8px;margin:14px 0 2px;}
+.branch{display:flex;flex-direction:column;gap:4px;padding:13px;border-radius:11px;text-align:left;
+  border:1px solid var(--border);background:rgba(255,255,255,.03);transition:.15s;}
+.branch:hover{transform:translateX(3px);border-color:currentColor;}
+.bname{font-size:15px;font-weight:700;letter-spacing:1px;}
+.bblurb{font-size:11.5px;line-height:1.55;color:var(--dim);}
+
+.mrow{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);
+  font-size:12px;color:var(--dim);}
+.mrow b{font-family:var(--mono);color:var(--text);}
+
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:12px;color:var(--dim);margin:12px 0;}
+.keys kbd{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:5px;
+  border:1px solid var(--border);background:var(--panel2);color:var(--gold);justify-self:start;}
+
+/* ---------------- title ---------------- */
+#title{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+  padding:22px;background:radial-gradient(900px 520px at 50% 30%,rgba(139,107,255,.12),transparent 62%),#06080C;}
+#title .card{text-align:center;}
+.hero{width:64px;height:64px;border-radius:17px;margin:0 auto 16px;
+  background:conic-gradient(from 210deg,var(--gold),var(--violet),var(--cyan),var(--gold));
+  box-shadow:0 0 40px rgba(232,184,92,.36);}
+#title h1{margin:0;font-size:30px;letter-spacing:4px;font-weight:700;}
+#title .tag{margin:4px 0 16px;font-size:10px;letter-spacing:3.4px;color:var(--gold);font-weight:600;}
+#title p{font-size:13px;line-height:1.7;color:var(--dim);margin:0 0 6px;}
+
+/* ---------------- market overlay ---------------- */
+#market{position:fixed;inset:0;z-index:50;display:none;flex-direction:column;background:#080B11;}
+#market.show{display:flex;}
+.mk-top{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,#0F131A,#0A0D13);}
+.mk-top h3{margin:0;font-size:13px;letter-spacing:1.5px;font-weight:700;}
+.mk-top .s{font-size:10px;color:var(--dim);}
+.mk-clock{font-family:var(--mono);font-size:18px;font-weight:600;}
+.mk-clock.crit{color:var(--red);animation:blink .5s steps(2) infinite;}
+@keyframes blink{50%{opacity:.3}}
+.mk-obj{display:flex;align-items:center;gap:9px;padding:5px 14px;border-bottom:1px solid var(--border);
+  background:#0B0E14;font-size:10px;}
+.mk-obj .tag{font-size:8.5px;letter-spacing:1.2px;color:var(--faint);font-weight:700;}
+.mk-obj .track{flex:1 1 auto;height:6px;border-radius:4px;background:#070A0F;border:1px solid var(--border);overflow:hidden;}
+.mk-obj .fill{height:100%;width:0;background:linear-gradient(90deg,var(--violet),var(--cyan),var(--green));transition:width .2s;}
+.mk-main{flex:1 1 auto;display:flex;min-height:0;}
+#mkChartWrap{flex:1 1 auto;position:relative;min-width:0;overflow:hidden;}
+#mkChart{width:100%;height:100%;display:block;}
+.mk-side{flex:0 0 208px;border-left:1px solid var(--border);background:var(--panel);
+  display:flex;flex-direction:column;padding:10px;gap:8px;min-height:0;}
+.mk-row{display:flex;justify-content:space-between;align-items:baseline;}
+.mk-row .k{font-size:8.5px;letter-spacing:1.1px;color:var(--faint);font-weight:700;}
+.mk-row .v{font-family:var(--mono);font-size:15px;font-weight:600;}
+.mk-pos{padding:8px 10px;border-radius:9px;border:1px solid var(--border);background:var(--panel2);}
+.mk-pos.flat{opacity:.55;} .mk-pos.long{border-color:#1E6B49;} .mk-pos.short{border-color:#7A2A32;}
+.mk-pos .side{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1.2px;}
+.mk-pos .info{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:3px;}
+#mkLog{flex:1 1 auto;overflow:hidden;display:flex;flex-direction:column;gap:2px;min-height:0;}
+#mkLog div{font-family:var(--mono);font-size:9.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mk-tip{font-size:10px;color:var(--cyan);font-family:var(--mono);}
+.mk-bottom{display:flex;align-items:center;gap:8px;padding:9px 12px;border-top:1px solid var(--border);
+  background:linear-gradient(180deg,#0E1219,#0A0D13);flex-wrap:wrap;}
+#mkSizes{display:flex;gap:4px;align-items:center;}
+#mkSizes .cap{font-size:8.5px;letter-spacing:1px;color:var(--faint);font-weight:700;margin-right:3px;}
+.mk-size{padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--panel);
+  font-family:var(--mono);font-size:11px;font-weight:600;color:var(--dim);}
+.mk-size.sel{border-color:#8A6E3A;color:var(--gold);background:rgba(232,184,92,.1);}
+.mk-btn{padding:12px 22px;border-radius:9px;border:1px solid var(--border);font-weight:700;
+  font-size:13px;letter-spacing:1.1px;background:var(--panel2);min-width:96px;transition:.12s;}
+.mk-btn small{display:block;font-size:8px;letter-spacing:1px;opacity:.55;margin-top:1px;}
+.mk-btn.buy{color:var(--green);border-color:#1E6B49;background:rgba(63,214,140,.09);}
+.mk-btn.sell{color:var(--red);border-color:#7A2A32;background:rgba(255,91,103,.09);}
+.mk-btn.flat{color:var(--dim);min-width:80px;}
+.mk-btn:disabled{opacity:.35;}
+.mk-btn:active{transform:translateY(1px);}
+#mkNews{position:absolute;left:0;right:0;top:0;padding:7px 14px;font-size:11px;
+  background:linear-gradient(90deg,rgba(232,184,92,.16),rgba(139,107,255,.1));
+  border-bottom:1px solid #8A6E3A;transform:translateY(-105%);transition:transform .25s;}
+#mkNews.show{transform:translateY(0);}
+.mk-pop{position:absolute;top:38%;font-family:var(--mono);font-size:16px;font-weight:700;
+  pointer-events:none;text-shadow:0 2px 12px rgba(0,0,0,.9);animation:pop 1.05s ease-out forwards;}
+@keyframes pop{0%{opacity:0;transform:translateY(6px);}20%{opacity:1;}100%{opacity:0;transform:translateY(-40px);}}
+#mkCount{position:absolute;inset:0;display:none;place-items:center;pointer-events:none;z-index:5;}
+#mkCount.show{display:grid;}
+#mkCountNum{font-family:var(--mono);font-size:76px;font-weight:700;color:var(--gold);
+  text-shadow:0 0 44px rgba(232,184,92,.5);animation:cnt .7s ease-out;}
+@keyframes cnt{from{opacity:0;transform:scale(1.6);}60%{opacity:1;}to{opacity:.2;transform:scale(.9);}}
+
+/* ---------------- responsive ---------------- */
+@media(max-width:820px){
+  .rail{width:150px;top:52px;}
+  .objective{top:164px;width:200px;font-size:10.5px;}
+  .mapwrap{width:104px;height:104px;top:52px;}
+  .mk-side{flex:0 0 156px;}
+  #mkLog{display:none;}
+  .mk-btn{min-width:0;flex:1 1 0;padding:12px 6px;font-size:12px;}
+  #mkSizes{width:100%;justify-content:space-between;}
+  .mk-size{flex:1 1 0;}
+}
+@media(max-width:560px){
+  .topbar{padding:6px 8px;gap:6px;flex-wrap:wrap;}
+  .brand b{display:none;}
+  .chip{padding:3px 7px;} .chip .v{font-size:12px;}
+  .rail{width:132px;} .objective{width:172px;}
+  .prompt{bottom:120px;}
+  .mk-main{flex-direction:column;}
+  .mk-side{flex:0 0 auto;border-left:none;border-top:1px solid var(--border);flex-direction:row;
+    align-items:center;gap:12px;overflow-x:auto;}
+}
 </style>
 </head>
 <body>
-<div id="haltedOverlay" class="halted-overlay" style="display:none;">
-  <div style="font-size:48px;">🛑</div>
-  <h2>TRADING HALTED</h2>
-  <p id="haltReason">Daily loss limit reached.</p>
-  <button id="haltResetBtn">Acknowledge + Start New Session</button>
+
+<canvas id="scene"></canvas>
+
+<div id="hud">
+  <div class="topbar">
+    <div class="brand"><div class="mark"></div><b>HEATSEEKER</b></div>
+    <div class="chip"><span class="k">CASH</span><span class="v" id="hudCash">$240</span></div>
+    <div class="chip" id="hudLoan" style="display:none"><span class="k">LOAN</span><span class="v" id="hudLoanVal" style="color:var(--red)">$0</span></div>
+    <div class="chip wide"><span class="k">RANK</span><span class="v" id="hudRank">Basement Nobody</span></div>
+    <div class="spacer"></div>
+    <div class="chip"><span class="k">DAY</span><span class="v" id="hudDay">Day 1 · Mon</span></div>
+    <div class="chip"><span class="k">TIME</span><span class="v" id="hudClock">8:00 AM</span></div>
+    <button class="icon" id="btnSound" title="Sound (M)">&#9834;</button>
+    <button class="icon" id="btnPause" title="Menu (Esc)">&#9776;</button>
+  </div>
+
+  <div class="rail">
+    <div class="srow" id="rowEnergy"><span class="lbl">ENERGY</span><span class="track"><span class="fill" id="barEnergy"></span></span><span class="num" id="valEnergy">88</span></div>
+    <div class="srow"><span class="lbl">SKILL</span><span class="track"><span class="fill" id="barSkill"></span></span><span class="num" id="valSkill">5</span></div>
+    <div class="srow"><span class="lbl">REP</span><span class="track"><span class="fill" id="barRep"></span></span><span class="num" id="valRep">0</span></div>
+    <div class="srow" id="rowHeat"><span class="lbl">HEAT</span><span class="track"><span class="fill" id="barHeat"></span></span><span class="num" id="valHeat">0</span></div>
+  </div>
+
+  <div class="objective"><b>OBJECTIVE</b><span id="hudObjective">Walk to Ladder &amp; Co. and ask for a job.</span></div>
+
+  <div class="mapwrap"><canvas id="minimap"></canvas></div>
+
+  <div class="prompt" id="prompt"><kbd>E</kbd><span id="promptName">Enter</span></div>
+  <div class="toasts" id="toasts"></div>
+
+  <div class="stick" id="stick"><div class="knob" id="stickKnob"></div></div>
+  <button class="ibtn" id="interactBtn">ENTER</button>
 </div>
 
-<div id="app">
-  <header>
-    <div class="brand">
-      <div class="mark"></div>
-      <div>
-        <h1>Heatseeker Autopilot</h1>
-        <span>full skylit framework · v3.9</span>
-      </div>
-    </div>
-    <span id="modeBadge" class="badge paper">PAPER MODE</span>
-    <div class="session-bar">
-      <div id="sessionDot" class="dot closed"></div>
-      <span id="sessionEt" style="color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:10px;">--:-- ET</span>
-      <span id="sessionPill" class="session-pill closed">CLOSED</span>
-    </div>
-    <div id="vixPill" class="vix-pill ok">VIX —</div>
-    <div id="eventBadge" style="display:none;" class="event-badge">⚠ EVENT DAY</div>
-    <div class="stat">Positions<b id="statOpen">0 / 3</b></div>
-    <div class="stat">Day P&amp;L<b id="statPnl" class="mono">$0.00</b></div>
-    <div class="stat">Loss Limit<b id="statLimit" class="mono warn">$150</b></div>
-    <div class="stat">Trades<b id="statTrades">0</b></div>
-    <button id="newDayBtn">New Session</button>
-    <button id="killBtn" class="kill">■ KILL</button>
-  </header>
-
-  <div class="layout">
-    <!-- LEFT — watchlist -->
-    <div class="panel">
-      <h2>Watchlist</h2>
-      <div id="watchlist"></div>
-    </div>
-
-    <!-- CENTER — ladder + engine read -->
-    <div class="panel">
-      <div class="ladder-wrap">
-        <div class="ladder-head">
-          <h3 id="ladderSym">SPY</h3>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div id="stopTimerDisplay" style="display:none;"></div>
-            <div id="candlePill" class="candle-pill flat">— flat</div>
-            <div class="px mono" id="ladderPx">—</div>
-          </div>
-        </div>
-        <svg id="ladderSvg" viewBox="0 0 520 380"></svg>
-      </div>
-      <div class="ladder-wrap">
-        <h2 style="margin-bottom:5px;">Engine Read</h2>
-        <div class="vote-grid" id="voteGrid"></div>
-        <div class="reasons" id="reasonsBox">Waiting for first tick…</div>
-      </div>
-    </div>
-
-    <!-- RIGHT — tabbed panel -->
-    <div class="panel">
-      <div class="tab-bar">
-        <button class="tab active" onclick="switchTab('positions')">Positions</button>
-        <button class="tab" onclick="switchTab('performance')">Performance</button>
-        <button class="tab" onclick="switchTab('settings')">Settings</button>
-      </div>
-
-      <!-- Positions tab -->
-      <div id="tab-positions" class="tab-content active">
-        <div id="positions"><div class="empty">No open positions</div></div>
-      </div>
-
-      <!-- Performance tab -->
-      <div id="tab-performance" class="tab-content">
-        <div class="perf-grid" id="perfGrid"></div>
-        <h2 style="margin-top:6px;">Closed Trades</h2>
-        <div id="tradeLog"><div class="empty">No closed trades yet</div></div>
-      </div>
-
-      <!-- Settings tab -->
-      <div id="tab-settings" class="tab-content">
-        <!-- API KEY -->
-        <div class="settings-block" style="border-color:var(--gold-dim);">
-          <label>Unusual Whales API Key</label>
-          <input id="uwApiKey" type="password" placeholder="Paste your API key here" autocomplete="off">
-          <button class="save-key" id="saveKeyBtn">Save Key</button>
-          <div id="keyStatus" class="key-status unset">● No key — using sim data</div>
-          <small>Stored in browser localStorage only. Get key at unusualwhales.com → Account → API.</small>
-        </div>
-        <!-- RISK LIMITS -->
-        <div class="settings-block">
-          <label>Daily loss limit ($)</label>
-          <input id="dailyLossInput" type="number" value="150" min="50" max="1000" step="25">
-          <small>Bot halts and overlays when this loss is reached. Resets on New Session.</small>
-          <label style="margin-top:8px;">VIX halt level</label>
-          <input id="vixHaltInput" type="number" value="30" min="15" max="80" step="1">
-          <small>No new entries when VIX is above this level. Positions still managed.</small>
-          <label style="margin-top:8px;">Max position size ($)</label>
-          <input id="maxSizeInput" type="number" value="75" min="25" max="200" step="25">
-          <small>Score 10+ uses this. Score 8–9 = $50. Score 6–7 = $25.</small>
-        </div>
-        <!-- EOD CLOSE -->
-        <div class="settings-block">
-          <label>Force-close time (ET)</label>
-          <input id="eodCloseInput" type="number" value="955" min="930" max="959" step="1">
-          <small>All positions closed at this ET minute (955 = 3:55pm). Options go to zero at 4pm.</small>
-        </div>
-        <!-- CONNECTORS -->
-        <div class="settings-block">
-          <label>Connectors</label>
-          <div class="conn-row"><span id="uwDot" style="color:var(--faint);">●</span>Unusual Whales — GEX/DEX/VEX/Flow</div>
-          <div class="conn-row"><span id="rhDot" style="color:var(--green);">●</span>Robinhood — execution + live marks</div>
-        </div>
-        <!-- ARM -->
-        <div class="settings-block">
-          <label>Arm live trading</label>
-          <input id="armPhrase" type="text" placeholder="type ENABLE LIVE to confirm">
-          <button id="armBtn" class="arm" style="width:100%;margin-top:4px;">Arm live trading</button>
-          <small>Trades real money. Kill switch disarms instantly.</small>
-        </div>
-      </div>
-    </div>
-
-    <div class="log-panel" id="logPanel"></div>
+<!-- location panel -->
+<div class="sheet" id="panel">
+  <div class="card">
+    <button class="closex" id="panelClose">&#10005;</button>
+    <h2 id="panelTitle">Place</h2>
+    <div class="sub" id="panelSub"></div>
+    <div id="panelBody"></div>
+    <div class="acts" id="panelActions"></div>
   </div>
 </div>
 
-<script>
-/* =============================================================
-   HEATSEEKER AUTOPILOT v3.9 — ALL 10 IMPROVEMENTS
-   1.  Force-close all positions at 3:55pm ET
-   2.  Daily loss limit — auto-halt with overlay
-   3.  Real gamma flip from live GEX zero-crossing
-   4.  Position sizing by conviction score (score-scaled)
-   5.  Real DEX/VEX/Flow endpoints via Unusual Whales MCP
-   6.  VIX gate — no entries above VIX threshold
-   7.  Real P&L from Robinhood live marks
-   8.  Performance log panel — win rate, avg win/loss, history
-   9.  Strike delta + budget filter before entry
-   10. Event calendar filter — no entries on known event days
-   Plus: 5-min open lockout, open lockout label fix
-   ============================================================= */
+<!-- modal -->
+<div class="sheet" id="modal">
+  <div class="card">
+    <h2 class="modal-title" id="modalTitle"></h2>
+    <div id="modalBody"></div>
+    <div id="modalActions"></div>
+  </div>
+</div>
 
-// ── API key ───────────────────────────────────────────────────
-const KEY_STORAGE = 'uw_api_key_v2';
-let UW_API_KEY = localStorage.getItem(KEY_STORAGE) || '';
-function getUWKey(){ return UW_API_KEY; }
+<!-- pause menu -->
+<div class="sheet" id="menu">
+  <div class="card">
+    <h2>PAUSED</h2>
+    <div class="sub">THE CITY WAITS</div>
+    <div id="menuStats"></div>
+    <button class="btn" id="btnResume">RESUME</button>
+    <button class="btn ghost" id="btnHelp">CONTROLS</button>
+    <button class="btn ghost" id="btnSaveQuit">SAVE</button>
+  </div>
+</div>
 
-// ── Constants ────────────────────────────────────────────────
-const STOP_HOLD_MS             = 5 * 60 * 1000;
-const TICK_MS                  = 2200;
-const NODE_FETCH_EVERY_N_TICKS = 8;
-const CANDLE_PERIOD            = 5;
-const MIN_NODE_GEX             = 30;
-const CHARM_WINDOW_MINS        = 30;
-const OPEN_LOCKOUT_MINS        = 5;
-const TRAIL_TRIGGER_PCT        = 1.0;   // 100%
-const TRAIL_EXIT_PCT           = 0.9;   // 90%
+<!-- help -->
+<div class="sheet" id="help">
+  <div class="card">
+    <h2>CONTROLS</h2>
+    <div class="sub">HOW TO MOVE AND WORK</div>
+    <div class="keys">
+      <kbd>W A S D</kbd><span>Walk the city</span>
+      <kbd>Shift</kbd><span>Sprint — costs more energy</span>
+      <kbd>E</kbd><span>Enter the building you are standing at</span>
+      <kbd>Esc</kbd><span>Menu · close a panel</span>
+      <kbd>[ ]</kbd><span>Zoom the camera</span>
+      <kbd>M</kbd><span>Mute</span>
+    </div>
+    <p class="pbody"><b>In a trading session:</b> <kbd>B</kbd> long, <kbd>S</kbd> short,
+      <kbd>Space</kbd> flatten, <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> trade size.</p>
+    <p class="pbody dim">Time passes while you walk. Energy drains. Rent is due every seven days.
+      Sleep at home to start a new day.</p>
+    <button class="btn" id="helpClose">BACK</button>
+  </div>
+</div>
 
-// ── Risk settings (user-configurable) ────────────────────────
-let DAILY_LOSS_LIMIT = 150;
-let VIX_HALT_LEVEL   = 30;
-let MAX_POSITION_SIZE= 75;
-let EOD_CLOSE_MIN    = 955;  // 3:55pm ET in minutes (955)
+<!-- title -->
+<div id="title">
+  <div class="card">
+    <div class="hero"></div>
+    <h1>HEATSEEKER</h1>
+    <div class="tag">A LIFE ON THE STREET</div>
+    <p>You are twenty-four and you live in your parents' basement.</p>
+    <p>Walk the city. Take the job. Learn the tape. Climb until you are the best broker
+       alive — or own the floor everyone else works on — or run the fund the whole city hates.</p>
+    <button class="btn" id="btnNew">NEW LIFE</button>
+    <button class="btn ghost" id="btnContinue" style="display:none">CONTINUE</button>
+    <button class="btn ghost" id="btnTitleHelp">CONTROLS</button>
+  </div>
+</div>
 
-// ── Known event days (YYYY-MM-DD) ────────────────────────────
-// Populated with major 2025 events — update as calendar evolves
-const EVENT_DAYS = new Set([
-  // FOMC meetings 2025
-  '2025-01-29','2025-03-19','2025-05-07','2025-06-18',
-  '2025-07-30','2025-09-17','2025-10-29','2025-12-10',
-  // CPI releases 2025
-  '2025-01-15','2025-02-12','2025-03-12','2025-04-10',
-  '2025-05-13','2025-06-11','2025-07-15','2025-08-12',
-  '2025-09-10','2025-10-15','2025-11-12','2025-12-10',
-  // NFP 2025
-  '2025-01-10','2025-02-07','2025-03-07','2025-04-04',
-  '2025-05-02','2025-06-06','2025-07-03','2025-08-01',
-  '2025-09-05','2025-10-03','2025-11-07','2025-12-05',
-]);
-
-function isEventDay(){
-  const d = new Date().toLocaleString('en-US',{timeZone:'America/New_York'});
-  const et = new Date(d);
-  const key = et.toISOString().slice(0,10);
-  return EVENT_DAYS.has(key);
-}
-
-// ── Session windows (ET minutes) ──────────────────────────────
-const WINDOWS = {
-  SPY: [{open:570,close:690},{open:900,close:960}],
-  QQQ: [{open:570,close:690},{open:900,close:960}],
-  SPX: [{open:900,close:960}],
-};
-
-const TICKERS = [
-  {sym:'SPY', base:560},
-  {sym:'QQQ', base:475},
-  {sym:'SPX', base:5600},
-];
-
-// ── State ────────────────────────────────────────────────────
-const state = {
-  mode:'paper', armed:false, selected:'SPY',
-  currentCap:3, capLocked:false, halted:false, haltReason:'',
-  positions:[], closedToday:[], dayPnl:0, tradesToday:0,
-  tickN:0, ticks:{},
-  blockedTickers: new Set(),
-  vix: null, vixFetchedAt: 0,
-  perfStats:{ wins:0, losses:0, totalWin:0, totalLoss:0, biggestWin:0, biggestLoss:0 },
-};
-
-// ── Tab switching ─────────────────────────────────────────────
-function switchTab(name){
-  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));
-  document.getElementById('tab-'+name).classList.add('active');
-  event.target.classList.add('active');
-  if(name==='performance') renderPerformance();
-}
-
-// ── Time helpers ─────────────────────────────────────────────
-function getETMinutes(){
-  const etStr=new Date().toLocaleString('en-US',{timeZone:'America/New_York'});
-  const et=new Date(etStr);
-  return et.getHours()*60+et.getMinutes();
-}
-function getETTimeString(){
-  return new Date().toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',second:'2-digit'});
-}
-function isTradeableNow(sym){
-  if(state.halted) return false;
-  if(isEventDay()) return false;
-  if(state.vix!==null && state.vix>VIX_HALT_LEVEL) return false;
-  const m=getETMinutes();
-  // EOD force-close window — no new entries
-  if(m>=EOD_CLOSE_MIN) return false;
-  return (WINDOWS[sym]??[]).some(w=>m>=w.open+OPEN_LOCKOUT_MINS&&m<w.close);
-}
-function globalSessionState(){
-  const m=getETMinutes();
-  const anyOpen = Object.entries(WINDOWS).some(([,ws])=>ws.some(w=>m>=w.open&&m<w.close));
-  if(!anyOpen) return 'closed';
-  if((WINDOWS['SPY']??[]).some(w=>m>=w.open&&m<w.close)) return 'open';
-  return 'spx-only';
-}
-function nextWindowLabel(sym){
-  const m=getETMinutes();
-  const next=(WINDOWS[sym]??[]).find(w=>w.open>m);
-  if(!next) return null;
-  const openMin=next.open+OPEN_LOCKOUT_MINS;
-  const h=Math.floor(openMin/60),mn=String(openMin%60).padStart(2,'0');
-  return `entries from ${h>12?h-12:h}:${mn}${h>=12?'pm':'am'} ET`;
-}
-function inCharmWindow(){
-  const m=getETMinutes();
-  return Object.values(WINDOWS).flat().some(w=>m>=w.close-CHARM_WINDOW_MINS&&m<w.close);
-}
-
-// ── Logging ──────────────────────────────────────────────────
-function log(msg,cls=''){
-  const el=document.getElementById('logPanel');
-  const d=document.createElement('div');
-  d.className='log-line '+cls;
-  d.innerHTML=`<span class="t">${new Date().toLocaleTimeString()}</span>${msg}`;
-  el.prepend(d);
-  while(el.children.length>500) el.removeChild(el.lastChild);
-}
-
-// ── Daily loss limit check ────────────────────────────────────
-function checkDailyLossLimit(){
-  if(state.halted) return;
-  if(state.dayPnl <= -DAILY_LOSS_LIMIT){
-    state.halted=true;
-    state.haltReason=`Daily loss limit reached (-$${Math.abs(state.dayPnl).toFixed(2)} / -$${DAILY_LOSS_LIMIT})`;
-    // force close all open positions
-    state.positions.slice().forEach(p=>closePosition(p,'HALT-LOSS-LIMIT',p.pnl));
-    document.getElementById('haltedOverlay').style.display='flex';
-    document.getElementById('haltReason').textContent=state.haltReason;
-    document.getElementById('modeBadge').textContent='HALTED';
-    document.getElementById('modeBadge').className='badge halted';
-    log(`🛑 HALT — ${state.haltReason}`,'halt');
-  }
-}
-
-// ── EOD force-close ───────────────────────────────────────────
-function checkEODClose(){
-  const m=getETMinutes();
-  if(m>=EOD_CLOSE_MIN && state.positions.length>0){
-    state.positions.slice().forEach(p=>{
-      log(`EOD force-close ${p.sym} — 3:55pm exit · P&L $${p.pnl.toFixed(2)}`,'warn');
-      closePosition(p,'EOD-FORCE-CLOSE',p.pnl);
-    });
-  }
-}
-
-// ── VIX fetch ─────────────────────────────────────────────────
-async function fetchVIX(){
-  const key=getUWKey();
-  if(!key){ state.vix=15; return; } // sim VIX when no key
-  if(Date.now()-state.vixFetchedAt<60000) return; // throttle to 1/min
-  try{
-    const resp=await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        model:"claude-sonnet-4-6",max_tokens:500,
-        messages:[{role:"user",content:"Call get_market_tide or get_vix to get the current VIX level. Return ONLY the numeric VIX value, nothing else."}],
-        mcp_servers:[{type:"url",url:"https://api.unusualwhales.com/api/mcp",name:"unusual-whales",authorization_token:key}],
-      })
-    });
-    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data=await resp.json();
-    const txt=(data.content||[]).find(b=>b.type==='text')?.text||'';
-    const num=parseFloat(txt.match(/[\d.]+/)?.[0]);
-    if(!isNaN(num)){ state.vix=num; state.vixFetchedAt=Date.now(); }
-  }catch(e){
-    // silently keep last VIX or sim
-    if(state.vix===null) state.vix=15;
-  }
-}
-
-// ── DEX/VEX/Flow live fetch ───────────────────────────────────
-async function fetchDEXVEXFlow(sym){
-  const key=getUWKey();
-  const s=state.ticks[sym];
-  if(!key) return; // stay on sim
-  try{
-    const resp=await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        model:"claude-sonnet-4-6",max_tokens:1000,
-        messages:[{role:"user",content:
-          `For ticker ${sym}, call get_greek_exposure (or equivalent) to get net delta exposure (DEX) and vanna exposure (VEX). `+
-          `Also call get_options_flow to get recent unusual flow direction. `+
-          `Return JSON: {"dex_bias":"bull|bear","vex_bias":"bull|bear","iv_trend":"rising|falling","flow_bias":"bull|bear|neut"}`
-        }],
-        mcp_servers:[{type:"url",url:"https://api.unusualwhales.com/api/mcp",name:"unusual-whales",authorization_token:key}],
-      })
-    });
-    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data=await resp.json();
-    const txt=(data.content||[]).find(b=>b.type==='text')?.text||'';
-    const match=txt.match(/\{[^}]+\}/);
-    if(match){
-      const parsed=JSON.parse(match[0]);
-      if(parsed.dex_bias)  s.dexBias  = parsed.dex_bias;
-      if(parsed.vex_bias)  s.vexBias  = parsed.vex_bias;
-      if(parsed.iv_trend)  s.ivTrend  = parsed.iv_trend;
-      if(parsed.flow_bias) s.flowBias = parsed.flow_bias;
-    }
-  }catch(e){ /* stay on sim values */ }
-}
-
-// ── Robinhood live P&L mark ───────────────────────────────────
-async function fetchLiveMark(pos){
-  if(state.mode!=='live'||!state.armed) return;
-  try{
-    const resp=await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        model:"claude-sonnet-4-6",max_tokens:500,
-        messages:[{role:"user",content:
-          `Get the current mark price for the open ${pos.sym} ${pos.direction} option position at strike ${pos.buyStrike} expiring today on Robinhood. `+
-          `Return ONLY the numeric mark price per contract, nothing else.`
-        }],
-        mcp_servers:[{type:"url",url:"https://agent.robinhood.com/mcp/trading",name:"robinhood"}],
-      })
-    });
-    if(!resp.ok) return;
-    const data=await resp.json();
-    const txt=(data.content||[]).find(b=>b.type==='text')?.text||'';
-    const mark=parseFloat(txt.match(/[\d.]+/)?.[0]);
-    if(!isNaN(mark)&&pos.entryPremium){
-      pos.pnl=Math.max(-pos.capital,(mark-pos.entryPremium)*100);
-      pos.liveMark=mark;
-    }
-  }catch(e){ /* fall back to synthetic */ }
-}
-
-// ── Strike selection with delta + budget filter ───────────────
-function selectStrikeWithBudget(s, direction, budget){
-  const step=strikeStepFor(s.price);
-  // get candidates OTM
-  const candidates = direction==='call'
-    ? s.strikes.filter(n=>n.strike>s.price).sort((a,b)=>a.strike-b.strike)
-    : s.strikes.filter(n=>n.strike<s.price).sort((a,b)=>b.strike-a.strike);
-  if(!candidates.length){
-    // fallback
-    return direction==='call'
-      ? +(Math.ceil(s.price/step)*step+step).toFixed(2)
-      : +(Math.floor(s.price/step)*step-step).toFixed(2);
-  }
-  // For sim: estimate delta from distance to strike
-  // 1st OTM ≈ 0.35 delta, 2nd ≈ 0.20, etc.
-  // Budget check: rough premium estimate = delta * underlying * 0.01 * 100
-  for(const c of candidates){
-    const distSteps=Math.round(Math.abs(c.strike-s.price)/step);
-    const estDelta=Math.max(0.05, 0.45-distSteps*0.12);
-    const estPremium=estDelta*s.price*0.01*100; // rough 0DTE estimate
-    if(estDelta>=0.20 && estDelta<=0.45 && estPremium<=budget){
-      return c.strike;
-    }
-  }
-  // fallback to first OTM if nothing fits delta range
-  return candidates[0].strike;
-}
-
-// ── Position sizing by score ──────────────────────────────────
-function sizeByScore(score){
-  if(score>=10) return Math.min(MAX_POSITION_SIZE, 75);
-  if(score>=8)  return 50;
-  return 25;
-}
-
-// ── Seed / drift ─────────────────────────────────────────────
-function strikeStepFor(p){ if(p>1000)return 10; if(p>400)return 5; if(p>100)return 2.5; return 1; }
-
-function seedTicker(t){
-  const step=strikeStepFor(t.base);
-  const strikes=[];
-  for(let i=-7;i<=7;i++) strikes.push({strike:+(t.base+i*step).toFixed(2),value:(Math.random()*2-1)*(i===0?40:120/(Math.abs(i)+1)),testCount:0});
-  const pos=strikes.filter(n=>n.value>0).sort((a,b)=>b.value-a.value);
-  const neg=strikes.filter(n=>n.value<0).sort((a,b)=>a.value-b.value);
-  // real flip = zero crossing of GEX
-  const flipLevel=computeFlipLevel(strikes)||t.base;
-  return {
-    sym:t.sym, price:t.base, priceHistory:[t.base],
-    strikes, live:false, warnedFailure:false,
-    callWall:pos[0]?.strike??t.base+step*3,
-    putWall:neg[0]?.strike??t.base-step*3,
-    flipLevel, prevCallWall:pos[0]?.strike??t.base+step*3,
-    prevPutWall:neg[0]?.strike??t.base-step*3,
-    dexBias:'neut', vexBias:'bull', ivTrend:'falling', flowBias:'neut',
-  };
-}
-
-// ── #3 Real gamma flip from zero-crossing ─────────────────────
-function computeFlipLevel(strikes){
-  // sort strikes ascending, find where cumulative GEX crosses zero
-  const sorted=[...strikes].sort((a,b)=>a.strike-b.strike);
-  let cumGex=0;
-  for(let i=0;i<sorted.length-1;i++){
-    const prev=cumGex;
-    cumGex+=sorted[i].value;
-    if((prev<0&&cumGex>=0)||(prev>0&&cumGex<=0)){
-      // interpolate
-      return (sorted[i].strike+sorted[i+1].strike)/2;
-    }
-  }
-  // if no crossing, return strike with smallest absolute GEX (closest to zero)
-  return sorted.reduce((a,b)=>Math.abs(b.value)<Math.abs(a.value)?b:a).strike;
-}
-
-TICKERS.forEach(t=>state.ticks[t.sym]=seedTicker(t));
-
-function driftTicker(s){
-  const vol=s.price*0.0009;
-  s.price=+(s.price+(Math.random()*2-1)*vol).toFixed(2);
-  s.priceHistory.push(s.price);
-  if(s.priceHistory.length>150) s.priceHistory.shift();
-  s.strikes.forEach(n=>{ n.value+=(Math.random()*2-1)*5; n.value=Math.max(-160,Math.min(160,n.value)); });
-  if(Math.random()<.025){ const idx=Math.floor(Math.random()*s.strikes.length); s.strikes[idx].value+=(Math.random()>.5?1:-1)*70; }
-  s.prevCallWall=s.callWall; s.prevPutWall=s.putWall;
-  const pos=s.strikes.filter(n=>n.value>0).sort((a,b)=>b.value-a.value);
-  const neg=s.strikes.filter(n=>n.value<0).sort((a,b)=>a.value-b.value);
-  if(pos.length) s.callWall=pos[0].strike;
-  if(neg.length) s.putWall=neg[0].strike;
-  // recompute flip from actual zero crossing
-  s.flipLevel=computeFlipLevel(s.strikes);
-  if(Math.random()<.05) s.dexBias=Math.random()>.5?'bull':'bear';
-  if(Math.random()<.04) s.vexBias=Math.random()>.5?'bull':'bear';
-  if(Math.random()<.03) s.ivTrend=Math.random()>.5?'rising':'falling';
-  if(Math.random()<.06) s.flowBias=Math.random()>.5?'bull':Math.random()>.5?'bear':'neut';
-}
-
-// ── Live node fetch ───────────────────────────────────────────
-let rotateIdx=0;
-async function fetchLiveNodes(sym){
-  const s=state.ticks[sym]; const key=getUWKey();
-  if(!key){ s.live=false; return; }
-  try{
-    const resp=await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        model:"claude-sonnet-4-6",max_tokens:2000,
-        messages:[{role:"user",content:`Call get_greek_exposure_by_strike for ticker ${sym}. Return ONLY the raw tool result JSON, no commentary.`}],
-        mcp_servers:[{type:"url",url:"https://api.unusualwhales.com/api/mcp",name:"unusual-whales",authorization_token:key}],
-      })
-    });
-    if(resp.status===429) throw new Error('rate limited');
-    if(resp.status===401) throw new Error('invalid API key');
-    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data=await resp.json();
-    const tr=(data.content||[]).filter(b=>b.type==='mcp_tool_result');
-    if(!tr.length) throw new Error('no tool result');
-    const rows=JSON.parse(tr[0].content?.[0]?.text||'');
-    if(!Array.isArray(rows)||!rows.length) throw new Error('empty');
-    let parsed=rows.map(r=>({
-      strike:parseFloat(r.strike),
-      value:parseFloat(r.call_gex||0)+parseFloat(r.put_gex||0),
-      testCount:0,
-    })).filter(n=>!isNaN(n.strike)&&!isNaN(n.value)).sort((a,b)=>a.strike-b.strike);
-    if(parsed.length>15){
-      const ci=parsed.reduce((bi,n,i)=>Math.abs(n.strike-s.price)<Math.abs(parsed[bi].strike-s.price)?i:bi,0);
-      parsed=parsed.slice(Math.max(0,ci-7),ci+8);
-    }
-    parsed.forEach(n=>{ const old=s.strikes.find(o=>Math.abs(o.strike-n.strike)<0.01); if(old) n.testCount=old.testCount; });
-    s.strikes=parsed;
-    const posN=parsed.filter(n=>n.value>0).sort((a,b)=>b.value-a.value);
-    const negN=parsed.filter(n=>n.value<0).sort((a,b)=>a.value-b.value);
-    if(posN.length) s.callWall=posN[0].strike;
-    if(negN.length) s.putWall=negN[0].strike;
-    // compute real flip from live data
-    s.flipLevel=computeFlipLevel(s.strikes);
-    s.live=true; s.warnedFailure=false;
-    // also fetch DEX/VEX/Flow when we have a successful node fetch
-    fetchDEXVEXFlow(sym);
-  }catch(e){
-    if(!s.warnedFailure){ log(`Node fetch failed ${sym} — ${e.message}`,'exit-loss'); s.warnedFailure=true; }
-    s.live=false;
-  }
-}
-
-// ── Signal logic ─────────────────────────────────────────────
-function candleDirection(s){
-  const h=s.priceHistory; if(h.length<CANDLE_PERIOD+1) return 'flat';
-  const p=h[h.length-1-CANDLE_PERIOD],c=h[h.length-1],t=c*0.0001;
-  return c<p-t?'red':c>p+t?'green':'flat';
-}
-function deflectionConfirmed(dir,candle){ if(candle==='flat') return false; return (dir==='call'&&candle==='red')||(dir==='put'&&candle==='green'); }
-function getGEXZone(s){ if(s.price>=s.callWall) return 'above-cw'; if(s.price>=s.flipLevel) return 'pos-gex'; if(s.price>=s.putWall) return 'neg-gex'; return 'below-pw'; }
-function getGammaRegime(s){
-  const zone=getGEXZone(s), fd=Math.abs(s.price-s.flipLevel), step=strikeStepFor(s.price);
-  if(fd<step) return 'transition';
-  const cm=Math.abs(s.callWall-s.prevCallWall)>step*0.3, pm=Math.abs(s.putWall-s.prevPutWall)>step*0.3;
-  if((zone==='neg-gex'||zone==='below-pw')&&(cm||pm)) return 'expansion';
-  if(zone==='neg-gex'||zone==='below-pw') return 'trending';
-  return 'compression';
-}
-function detectPattern(s){
-  const sorted=[...s.strikes].sort((a,b)=>Math.abs(b.value)-Math.abs(a.value));
-  const step=strikeStepFor(s.price), strong=s.strikes.filter(n=>Math.abs(n.value)>60);
-  if(strong.length>=4){ const sp=Math.max(...strong.map(n=>n.strike))-Math.min(...strong.map(n=>n.strike)); if(sp<step*3) return 'compression'; }
-  const rb=s.strikes.find(n=>n.testCount>=2&&Math.abs(n.strike-s.price)<step*1.5&&((n.value>0&&s.price<n.strike)||(n.value<0&&s.price>n.strike)));
-  if(rb) return 'flip';
-  const ab=s.strikes.filter(n=>n.strike>s.price).sort((a,b)=>a.strike-b.strike);
-  const bl=s.strikes.filter(n=>n.strike<s.price).sort((a,b)=>b.strike-a.strike);
-  if(ab.length>=2&&Math.abs(ab[1].strike-ab[0].strike)>step*2) return 'void';
-  if(bl.length>=2&&Math.abs(bl[0].strike-bl[1].strike)>step*2) return 'void';
-  if(s.strikes.length>=5){ const v=s.strikes.map(n=>n.value); if(v.every((x,i)=>i===0||x<=v[i-1])||v.every((x,i)=>i===0||x>=v[i-1])) return 'ladder'; }
-  if(sorted.length>=3&&Math.abs(sorted[0].value)>Math.abs(sorted[1].value)*2.2) return 'king';
-  return 'none';
-}
-function trinityVote(s){
-  const zone=getGEXZone(s);
-  const gex=(zone==='pos-gex'||zone==='above-cw')?'bull':(zone==='neg-gex'||zone==='below-pw')?'bear':'neut';
-  const dex=s.dexBias;
-  let vex='neut';
-  if(s.vexBias==='bull'&&s.ivTrend==='rising')  vex='bull';
-  if(s.vexBias==='bull'&&s.ivTrend==='falling') vex='bear';
-  if(s.vexBias==='bear'&&s.ivTrend==='rising')  vex='bear';
-  if(s.vexBias==='bear'&&s.ivTrend==='falling') vex='bull';
-  const flow=s.flowBias;
-  const votes=[gex,dex,vex,flow];
-  const bc=votes.filter(v=>v==='bull').length, rc=votes.filter(v=>v==='bear').length;
-  let dir=null; if(bc>=2&&bc>rc) dir='call'; if(rc>=2&&rc>bc) dir='put';
-  return {gexVote:gex,dexVote:dex,vexVote:vex,flowVote:flow,bullCount:bc,bearCount:rc,direction:dir,strength:Math.max(bc,rc)};
-}
-function nodeQuality(n){ const m=Math.abs(n.value); if(m<MIN_NODE_GEX) return 'weak'; if(n.testCount===0) return 'fresh'; if(n.testCount===1) return 'tested'; return 'stale'; }
-function measureAirPocket(s,dir,tgt){ return {count:s.strikes.filter(n=>dir==='call'?n.strike>s.price&&n.strike<tgt:n.strike<s.price&&n.strike>tgt).length}; }
-function selectVelocityTarget(s,dir){
-  const step=strikeStepFor(s.price);
-  const c=dir==='call'?s.strikes.filter(n=>n.strike>s.price).sort((a,b)=>a.strike-b.strike):s.strikes.filter(n=>n.strike<s.price).sort((a,b)=>b.strike-a.strike);
-  if(!c.length) return null;
-  for(let i=1;i<c.length;i++) if(Math.abs(c[i].strike-c[i-1].strike)>=step*2) return c[i];
-  return c[c.length-1];
-}
-function classifyAndScore(s){
-  const zone=getGEXZone(s),regime=getGammaRegime(s),pattern=detectPattern(s),trinity=trinityVote(s);
-  const king=s.strikes.reduce((a,b)=>Math.abs(b.value)>Math.abs(a.value)?b:a);
-  const above=s.strikes.filter(n=>n.strike>s.price).sort((a,b)=>a.strike-b.strike);
-  const below=s.strikes.filter(n=>n.strike<s.price).sort((a,b)=>b.strike-a.strike);
-  const gkAbove=above.reduce((best,n)=>!best||Math.abs(n.value)>Math.abs(best.value)?n:best,null);
-  const gkBelow=below.reduce((best,n)=>!best||Math.abs(n.value)>Math.abs(best.value)?n:best,null);
-  const reasons=[]; let score=0;
-  if(pattern==='compression') return {score:0,direction:null,stopNode:null,targetNode:null,capital:0,zone,regime,pattern,trinity,king,gkAbove,gkBelow,reasons:['⛔ Compression — mandatory skip'],blocked:true};
-  if(regime==='transition')   return {score:0,direction:null,stopNode:null,targetNode:null,capital:0,zone,regime,pattern,trinity,king,gkAbove,gkBelow,reasons:['⛔ Transition — standing aside'],blocked:true};
-  if(trinity.strength>=4){score+=4;reasons.push(`Trinity 4/4 — ${trinity.direction==='call'?'bullish':'bearish'}`);}
-  else if(trinity.strength===3){score+=3;reasons.push(`Trinity 3/4`);}
-  else if(trinity.strength===2){score+=2;reasons.push('Trinity 2/4 — moderate');}
-  else return {score:0,direction:null,stopNode:null,targetNode:null,capital:0,zone,regime,pattern,trinity,king,gkAbove,gkBelow,reasons:['Trinity < 2/4 — no trade'],blocked:false};
-  const direction=trinity.direction;
-  if(regime==='expansion'){score+=2;reasons.push('Expansion — explosive');}
-  else if(regime==='trending'){score+=2;reasons.push('Trending — momentum');}
-  if(pattern==='king'){score+=3;reasons.push('King and Court');}
-  else if(pattern==='void'){score+=2;reasons.push('Void — air pocket');}
-  else if(pattern==='ladder'){score+=2;reasons.push('Ladder — rolling walls');}
-  else if(pattern==='flip'){score+=2;reasons.push('Polarity Flip');}
-  if((zone==='neg-gex'||zone==='below-pw')&&direction==='put'){score+=1;reasons.push('Neg GEX — put momentum');}
-  if(zone==='pos-gex'&&direction==='call'){score+=1;reasons.push('Pos GEX — dealer support');}
-  if(zone==='above-cw'&&direction==='put'){score+=1;reasons.push('Above CW — hard ceiling');}
-  let stopNode=direction==='call'?gkBelow:gkAbove;
-  let targetNode=selectVelocityTarget(s,direction);
-  const step=strikeStepFor(s.price);
-  if(direction==='call'&&targetNode&&targetNode.strike>s.callWall) targetNode=s.strikes.find(n=>Math.abs(n.strike-s.callWall)<step)||targetNode;
-  if(direction==='put'&&targetNode&&targetNode.strike<s.putWall)   targetNode=s.strikes.find(n=>Math.abs(n.strike-s.putWall)<step)||targetNode;
-  if(!stopNode) return {score:0,direction,stopNode:null,targetNode,capital:0,zone,regime,pattern,trinity,king,gkAbove,gkBelow,reasons:[...reasons,'No stop node'],blocked:false};
-  const qual=nodeQuality(stopNode);
-  if(qual==='weak') return {score:0,direction,stopNode,targetNode,capital:0,zone,regime,pattern,trinity,king,gkAbove,gkBelow,reasons:[...reasons,'Stop node too weak'],blocked:false};
-  if(qual==='fresh'){score+=1;reasons.push('Stop node fresh');}
-  if(qual==='stale'){score-=1;reasons.push('Stop node stale');}
-  if(targetNode){ const p=measureAirPocket(s,direction,targetNode.strike); if(p.count===0){score+=2;reasons.push(`Clean air pocket to ${targetNode.strike}`);}else if(p.count===1){score+=1;reasons.push('Thin air pocket');}else{score-=1;reasons.push('Congested path');} }
-  const nearPin=s.strikes.find(n=>Math.abs(n.strike-s.price)<step*1.5&&Math.abs(n.value)>120&&n!==stopNode);
-  if(nearPin){score-=1;reasons.push(`Pin risk at ${nearPin.strike}`);}
-  if(inCharmWindow()&&(regime==='trending'||regime==='expansion')){score+=1;reasons.push('Charm window — momentum');}
-  // ── #9 budget-aware sizing ─────────────────────────────────
-  const capital=sizeByScore(score);
-  reasons.push(`Position size: $${capital} (score ${score})`);
-  return {score,direction,stopNode,targetNode,capital,zone,regime,pattern,trinity,king,gkAbove,gkBelow,reasons,blocked:false};
-}
-
-// ── Entry ─────────────────────────────────────────────────────
-function tryEnter(sym){
-  if(state.halted)                              return;
-  if(!isTradeableNow(sym))                      return;
-  if(state.blockedTickers.has(sym))             return;
-  if(state.positions.find(p=>p.sym===sym))      return;
-  if(state.positions.length>=state.currentCap)  return;
-  if(isEventDay())                              return;
-  if(state.vix!==null&&state.vix>VIX_HALT_LEVEL) return;
-  const s=state.ticks[sym], cs=classifyAndScore(s);
-  if(cs.blocked||cs.score<6||!cs.direction||!cs.stopNode) return;
-  const candle=candleDirection(s), negGex=cs.zone==='neg-gex'||cs.zone==='below-pw';
-  if(negGex){ if(cs.direction==='call'&&candle!=='green') return; if(cs.direction==='put'&&candle!=='red') return; }
-  else { if(!deflectionConfirmed(cs.direction,candle)) return; }
-  // ── #9 delta + budget filtered strike ─────────────────────
-  const buyStrike=selectStrikeWithBudget(s,cs.direction,cs.capital);
-  const trailTrigger=cs.capital*TRAIL_TRIGGER_PCT;
-  const trailExit   =cs.capital*TRAIL_EXIT_PCT;
-  const pos={
-    id:Math.random().toString(36).slice(2,8),
-    sym,direction:cs.direction,structure:'naked',
-    entrySpot:s.price,buyStrike,sellStrike:null,
-    stopStrike:cs.stopNode.strike,targetStrike:cs.targetNode?.strike??null,
-    dte:0,capital:cs.capital,trailTrigger,trailExit,
-    opened:Date.now(),pnl:0,
-    trailArmed:false,stopCrossedAt:null,stopCountdown:null,
-    entryCandle:candle,entryScore:cs.score,entryPattern:cs.pattern,
-    entryRegime:cs.regime,trinityStrength:cs.trinity.strength,
-    entryPremium:null, liveMark:null,
-  };
-  const stopN=s.strikes.find(n=>Math.abs(n.strike-cs.stopNode.strike)<0.01);
-  if(stopN) stopN.testCount++;
-  state.positions.push(pos);
-  state.tradesToday++;
-  const cl=negGex?(candle==='green'?'🟢 momentum':'🔴 momentum'):(candle==='red'?'🔴 deflection':'🟢 deflection');
-  log(`ENTER ${sym} — ${cs.direction.toUpperCase()} · ${cl} · ${cs.regime}·${cs.pattern} · T${cs.trinity.strength}/4 · score ${cs.score} · $${cs.capital} · strike ${buyStrike} · stop ${cs.stopNode.strike} · target ${cs.targetNode?.strike??'—'}`,'enter');
-  if(state.mode==='live'&&state.armed) executeLiveOrder(pos);
-  else log(`[PAPER] ${sym} naked ${cs.direction.toUpperCase()} @ ${buyStrike} 0DTE · $${cs.capital}`,'system');
-}
-
-// ── Management ────────────────────────────────────────────────
-function manage(){
-  const now=Date.now();
-  state.positions.slice().forEach(pos=>{
-    // ── #7 try live mark first, fall back to synthetic ────────
-    if(state.mode==='live'&&state.armed&&pos.liveMark&&pos.entryPremium){
-      pos.pnl=Math.max(-pos.capital,(pos.liveMark-pos.entryPremium)*100);
-    } else {
-      let pnl=(state.ticks[pos.sym].price-pos.entrySpot)*(pos.direction==='call'?1:-1)*0.4*10;
-      pos.pnl=Math.max(-pos.capital,pnl);
-    }
-    const pnl=pos.pnl;
-    if(!pos.trailArmed&&pnl>=pos.trailTrigger){
-      pos.trailArmed=true;
-      log(`${pos.sym} hit 100% (+$${pnl.toFixed(2)}) — trail armed · stop at $${pos.trailExit.toFixed(0)} (90%)`,'trail');
-      return;
-    }
-    if(pos.trailArmed&&pnl<=pos.trailExit){ closePosition(pos,'TRAIL-90%',pnl); return; }
-    if(pos.targetStrike!==null){
-      const px=state.ticks[pos.sym].price;
-      const hit=pos.direction==='call'?px>=pos.targetStrike:px<=pos.targetStrike;
-      if(hit){ closePosition(pos,'TARGET',pnl); return; }
-    }
-    if(!pos.trailArmed){
-      const px=state.ticks[pos.sym].price;
-      const beyond=pos.direction==='call'?px<pos.stopStrike:px>pos.stopStrike;
-      if(beyond){
-        if(pos.stopCrossedAt===null){ pos.stopCrossedAt=now; log(`${pos.sym} broke stop ${pos.stopStrike} — 5-min clock`,'warn'); }
-        const el=now-pos.stopCrossedAt; pos.stopCountdown=Math.max(0,STOP_HOLD_MS-el);
-        if(el>=STOP_HOLD_MS){ closePosition(pos,'STOP-5MIN',pnl); return; }
-      } else {
-        if(pos.stopCrossedAt!==null) log(`${pos.sym} recrossed stop — clock reset`,'system');
-        pos.stopCrossedAt=null; pos.stopCountdown=null;
-      }
-    } else { pos.stopCrossedAt=null; pos.stopCountdown=null; }
-  });
-}
-
-function closePosition(pos,reason,pnl){
-  state.positions=state.positions.filter(p=>p.id!==pos.id);
-  state.dayPnl+=pnl;
-  // ── #8 performance tracking ───────────────────────────────
-  if(pnl>=0){ state.perfStats.wins++; state.perfStats.totalWin+=pnl; state.perfStats.biggestWin=Math.max(state.perfStats.biggestWin,pnl); }
-  else { state.perfStats.losses++; state.perfStats.totalLoss+=Math.abs(pnl); state.perfStats.biggestLoss=Math.max(state.perfStats.biggestLoss,Math.abs(pnl)); }
-  state.closedToday.push({sym:pos.sym,direction:pos.direction,buyStrike:pos.buyStrike,capital:pos.capital,reason,pnl,time:new Date().toLocaleTimeString(),entryRegime:pos.entryRegime,entryPattern:pos.entryPattern,trinityStrength:pos.trinityStrength});
-  const win=pnl>=0;
-  log(`EXIT ${pos.sym} (${reason}) — ${win?'+':''}$${pnl.toFixed(2)} · ${pos.direction} ${pos.buyStrike} 0DTE${pos.trailArmed?' · trailing':''}`,win?'exit-win':'exit-loss');
-  if(reason.startsWith('STOP')&&pnl<0){
-    state.blockedTickers.add(pos.sym);
-    log(`${pos.sym} blocked for session`,'warn');
-    if(!state.capLocked){ state.currentCap=1; state.capLocked=true; log('Cap locked to 1','exit-loss'); }
-  }
-  if(state.mode==='live'&&state.armed) executeLiveClose(pos,reason);
-  checkDailyLossLimit();
-}
-
-// ── Live order execution ──────────────────────────────────────
-async function executeLiveOrder(pos){
-  const key=getUWKey(); const expDate=new Date().toISOString().slice(0,10);
-  const signal=`${pos.entryRegime}·${pos.entryPattern}·T${pos.trinityStrength}/4·${pos.entryCandle}·score ${pos.entryScore}`;
-  const desc=`Buy to open 1 ${pos.sym} ${pos.direction} option strike ${pos.buyStrike} expiring ${expDate} (0DTE). Signal: ${signal}. Budget $${pos.capital} premium. Limit at mid. Report fill price and order ID.`;
-  const servers=[{type:"url",url:"https://agent.robinhood.com/mcp/trading",name:"robinhood"}];
-  if(key) servers.unshift({type:"url",url:"https://api.unusualwhales.com/api/mcp",name:"unusual-whales",authorization_token:key});
-  try{
-    const resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1200,messages:[{role:"user",content:`${key?`Confirm ${pos.sym} chain via Unusual Whales for strike ${pos.buyStrike} expiring ${expDate}, then p`:'P'}lace on Robinhood: ${desc}`}],mcp_servers:servers})});
-    const data=await resp.json();
-    // extract fill premium for real P&L tracking
-    const txt=(data.content||[]).find(b=>b.type==='text')?.text||'';
-    const fillMatch=txt.match(/fill.*?\$([\d.]+)/i)||txt.match(/premium.*?([\d.]+)/i);
-    if(fillMatch) pos.entryPremium=parseFloat(fillMatch[1]);
-    log(`[LIVE] order sent ${pos.sym}: ${txt.slice(0,150)}`,'system');
-  }catch(e){ log(`[LIVE] order FAILED ${pos.sym}: ${e.message}`,'exit-loss'); }
-}
-
-async function executeLiveClose(pos,reason){
-  try{
-    const resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:500,messages:[{role:"user",content:`Close ${pos.sym} naked long ${pos.direction} strike ${pos.buyStrike} on Robinhood. Spot at entry: ${pos.entrySpot}. Reason: ${reason}. Sell to close at market.`}],mcp_servers:[{type:"url",url:"https://agent.robinhood.com/mcp/trading",name:"robinhood"}]})});
-    const data=await resp.json();
-    log(`[LIVE] close sent ${pos.sym}: ${JSON.stringify(data.content||data).slice(0,150)}`,'system');
-  }catch(e){ log(`[LIVE] close FAILED ${pos.sym}: ${e.message} — CHECK ROBINHOOD`,'exit-loss'); }
-}
-
-// ── Render ────────────────────────────────────────────────────
-function zoneLabel(z){ return {'above-cw':'▲ above CW','pos-gex':'◈ pos GEX','neg-gex':'◈ neg GEX','below-pw':'▼ below PW'}[z]||z; }
-function zoneClass(z){ return {'above-cw':'zone-above-cw','pos-gex':'zone-pos-gex','neg-gex':'zone-neg-gex','below-pw':'zone-below-pw'}[z]||''; }
-
-function renderSessionBar(){
-  const sess=globalSessionState(), m=getETMinutes();
-  const dot=document.getElementById('sessionDot'), pill=document.getElementById('sessionPill');
-  document.getElementById('sessionEt').textContent=getETTimeString()+' ET';
-  // event badge
-  const evBadge=document.getElementById('eventBadge');
-  evBadge.style.display=isEventDay()?'inline-block':'none';
-  // EOD warning
-  if(m>=EOD_CLOSE_MIN&&m<960){
-    pill.className='session-pill closed'; pill.textContent='⏰ EOD — CLOSING';
-    dot.className='dot closed'; return;
-  }
-  if(state.halted){ dot.className='dot closed'; pill.className='session-pill closed'; pill.textContent='🛑 HALTED'; return; }
-  if(sess==='open'){ dot.className='dot open'; pill.className='session-pill open'; pill.textContent='MORNING + POWER HOUR'; }
-  else if(sess==='spx-only'){ dot.className='dot spx'; pill.className='session-pill spx-only'; pill.textContent='POWER HOUR — SPX'; }
-  else { dot.className='dot closed'; pill.className='session-pill closed'; pill.textContent=nextWindowLabel('SPY')??'CLOSED'; }
-  // VIX pill
-  const vp=document.getElementById('vixPill');
-  if(state.vix===null){ vp.className='vix-pill ok'; vp.textContent='VIX —'; }
-  else if(state.vix>VIX_HALT_LEVEL){ vp.className='vix-pill halt'; vp.textContent=`VIX ${state.vix.toFixed(1)} ⛔`; }
-  else if(state.vix>VIX_HALT_LEVEL*0.8){ vp.className='vix-pill warn'; vp.textContent=`VIX ${state.vix.toFixed(1)} ⚠`; }
-  else { vp.className='vix-pill ok'; vp.textContent=`VIX ${state.vix.toFixed(1)}`; }
-}
-
-function renderWatchlist(){
-  const el=document.getElementById('watchlist'); el.innerHTML='';
-  TICKERS.forEach(t=>{
-    const s=state.ticks[t.sym], cs=classifyAndScore(s);
-    const tradeable=isTradeableNow(t.sym), blocked=state.blockedTickers.has(t.sym);
-    const candle=candleDirection(s);
-    const card=document.createElement('div');
-    card.className='tick-card'+(state.selected===t.sym?' active':'')+(!tradeable&&!blocked?' gated':'')+(blocked?' blocked':'');
-    card.onclick=()=>{ state.selected=t.sym; renderAll(); };
-    const cc=candle==='red'?'var(--red)':candle==='green'?'var(--green)':'var(--faint)';
-    const ca=candle==='red'?'▼':candle==='green'?'▲':'—';
-    const dots=cs.trinity?[cs.trinity.gexVote,cs.trinity.dexVote,cs.trinity.vexVote,cs.trinity.flowVote].map(v=>`<div class="trinity-dot ${v}"></div>`).join(''):'';
-    const sizing=cs.score>=6?`<span class="tag" style="color:var(--gold);">$${sizeByScore(cs.score)}</span>`:'';
-    card.innerHTML=`
-      <div class="tick-row"><span class="tick-sym">${t.sym}</span><span class="tick-price mono" style="color:${cc};">${ca} ${s.price.toFixed(2)}</span></div>
-      <div class="tick-tags">
-        ${cs.regime?`<span class="tag regime-${cs.regime}">${cs.regime}</span>`:''}
-        ${cs.pattern&&cs.pattern!=='none'?`<span class="tag pattern-${cs.pattern}">${cs.pattern}</span>`:''}
-        <span class="zone-pill ${zoneClass(cs.zone||'pos-gex')}" style="font-size:8px;">${zoneLabel(cs.zone||'—')}</span>
-        ${blocked?'<span class="tag" style="color:var(--red);">⊘ blocked</span>':tradeable?'<span class="tag" style="color:var(--green);">● open</span>':'<span class="tag" style="color:var(--faint);">⊘ gated</span>'}
-        ${s.live?'<span class="tag" style="color:var(--green);">● live</span>':'<span class="tag" style="color:var(--faint);">○ sim</span>'}
-        ${sizing}
-        ${state.positions.find(p=>p.sym===t.sym)?'<span class="tag" style="color:var(--green);">● pos</span>':''}
+<!-- trading session -->
+<div id="market">
+  <div class="mk-top">
+    <div><h3 id="mkTitle">SESSION</h3><div class="s" id="mkSub"></div></div>
+    <div class="spacer" style="flex:1"></div>
+    <div class="mk-clock" id="mkClock">45.0s</div>
+  </div>
+  <div class="mk-obj">
+    <span class="tag">TARGET</span>
+    <span class="mono" id="mkTargetVal" style="color:var(--gold)">$0</span>
+    <span class="track"><span class="fill" id="mkTargetFill"></span></span>
+  </div>
+  <div class="mk-main">
+    <div id="mkChartWrap">
+      <canvas id="mkChart"></canvas>
+      <div id="mkNews"><b class="y">FLASH</b> <span id="mkNewsText"></span></div>
+      <div id="mkCount"><span id="mkCountNum">3</span></div>
+    </div>
+    <div class="mk-side">
+      <div class="mk-row"><span class="k">EQUITY</span><span class="v" id="mkEquity">$0</span></div>
+      <div class="mk-row"><span class="k">P&amp;L</span><span class="v" id="mkPnl">$0</span></div>
+      <div class="mk-pos flat" id="mkPos">
+        <div class="side" id="mkPosSide">FLAT</div>
+        <div class="info" id="mkPosInfo">—</div>
       </div>
-      <div class="trinity-row">${dots}</div>
-      <div class="score-bar"><i style="width:${Math.min(100,Math.max(0,(cs.score||0)*8))}%"></i></div>`;
-    el.appendChild(card);
+      <div class="mk-tip" id="mkTipRow" style="display:none">TIP ACTIVE · <span id="mkTipVal"></span></div>
+      <div id="mkLog"></div>
+    </div>
+  </div>
+  <div class="mk-bottom">
+    <div id="mkSizes">
+      <span class="cap">SIZE</span>
+      <button class="mk-size" data-size="0.25">25%</button>
+      <button class="mk-size sel" data-size="0.5">50%</button>
+      <button class="mk-size" data-size="1">100%</button>
+    </div>
+    <div class="spacer" style="flex:1"></div>
+    <button class="mk-btn sell" id="mkSell">SHORT<small>S</small></button>
+    <button class="mk-btn flat" id="mkFlat">FLAT<small>SPACE</small></button>
+    <button class="mk-btn buy" id="mkBuy">LONG<small>B</small></button>
+  </div>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="src/util.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/state.js"></script>
+<script src="src/city.js"></script>
+<script src="src/world.js"></script>
+<script src="src/player.js"></script>
+<script src="src/input.js"></script>
+<script src="src/ui.js"></script>
+<script src="src/market.js"></script>
+<script src="src/locations.js"></script>
+<script src="src/game.js"></script>
+<script>
+(function(){
+  const HS = window.HS;
+  const game = HS.Game();
+  window.__game = game;
+  game.boot();
+
+  const title = HS.$('title');
+  if(HS.hasSave()) HS.$('btnContinue').style.display = '';
+
+  HS.$('btnNew').addEventListener('click', () => {
+    HS.Audio.init(); HS.Audio.resume(); HS.Audio.enter();
+    title.style.display = 'none';
+    game.startNew();
   });
-}
-
-function renderLadder(){
-  const s=state.ticks[state.selected], cs=classifyAndScore(s);
-  const pos=state.positions.find(p=>p.sym===s.sym), candle=candleDirection(s);
-  document.getElementById('ladderSym').textContent=s.sym;
-  document.getElementById('ladderPx').textContent=s.price.toFixed(2);
-  const cp=document.getElementById('candlePill');
-  if(candle==='red'){ cp.className='candle-pill red'; cp.textContent='▼ red'; }
-  else if(candle==='green'){ cp.className='candle-pill green'; cp.textContent='▲ green'; }
-  else { cp.className='candle-pill flat'; cp.textContent='— flat'; }
-  const te=document.getElementById('stopTimerDisplay');
-  if(pos&&pos.trailArmed){ te.style.display='inline-block'; te.innerHTML=`<span class="trail-badge">⚡ TRAIL · $${pos.trailExit.toFixed(0)}</span>`; }
-  else if(pos&&pos.stopCountdown!==null){ const sc=Math.ceil(pos.stopCountdown/1000); te.style.display='inline-block'; te.innerHTML=`<span class="stop-timer">⏱ ${Math.floor(sc/60)}:${String(sc%60).padStart(2,'0')}</span>`; }
-  else te.style.display='none';
-  const strikes=[...s.strikes].sort((a,b)=>b.strike-a.strike);
-  const rowH=360/Math.max(strikes.length,1), maxAbs=Math.max(...strikes.map(n=>Math.abs(n.value)),1);
-  const lo=strikes[strikes.length-1]?.strike??0, hi=strikes[0]?.strike??1, range=Math.max(hi-lo,1);
-  const toY=px=>10+((hi-px)/range)*360;
-  let svg='';
-  if(s.callWall>=lo&&s.callWall<=hi){ const cy=toY(s.callWall); svg+=`<line x1="0" y1="${cy}" x2="520" y2="${cy}" stroke="var(--green)" stroke-dasharray="5 3" opacity="0.4"/><text x="4" y="${cy-3}" fill="var(--green)" font-size="8" opacity="0.7">CW ${s.callWall}</text>`; }
-  if(s.putWall>=lo&&s.putWall<=hi){ const py2=toY(s.putWall); svg+=`<line x1="0" y1="${py2}" x2="520" y2="${py2}" stroke="var(--red)" stroke-dasharray="5 3" opacity="0.4"/><text x="4" y="${py2+10}" fill="var(--red)" font-size="8" opacity="0.7">PW ${s.putWall}</text>`; }
-  if(s.flipLevel>=lo&&s.flipLevel<=hi){ const fy=toY(s.flipLevel); svg+=`<line x1="0" y1="${fy}" x2="520" y2="${fy}" stroke="var(--gold)" stroke-dasharray="3 2" opacity="0.7"/><text x="4" y="${fy-3}" fill="var(--gold)" font-size="8" opacity="0.9">γ flip ${s.flipLevel.toFixed(1)}</text>`; }
-  strikes.forEach((n,i)=>{
-    const y=10+i*rowH, w=Math.abs(n.value)/maxAbs*185;
-    const color=n.value>=0?'var(--gold)':'var(--violet)';
-    const isKing=n===cs.king, isGK=n===cs.gkAbove||n===cs.gkBelow;
-    const isStop=pos&&Math.abs(n.strike-pos.stopStrike)<0.01;
-    const isTgt=pos&&pos.targetStrike&&Math.abs(n.strike-pos.targetStrike)<0.01;
-    const tags=[]; if(isStop) tags.push({t:'◈ stop',c:'var(--red)'}); if(isTgt) tags.push({t:'◎ tgt',c:'var(--green)'}); if(isKing) tags.push({t:'♛ king',c:'var(--gold)'}); if(isGK&&!isStop&&!isTgt) tags.push({t:'⛊ gate',c:'var(--dim)'});
-    const qual=nodeQuality(n), qOp=qual==='fresh'?1:qual==='tested'?.7:qual==='stale'?.4:.25;
-    svg+=`<g><text x="58" y="${y+rowH*.65}" fill="${isStop?'var(--red)':isGK?'var(--text)':'var(--dim)'}" font-size="10" text-anchor="end">${n.strike}</text><rect x="68" y="${y+rowH*.2}" width="${w}" height="${rowH*.5}" rx="3" fill="${color}" opacity="${isKing?qOp:qOp*.55}"/>${n.testCount>0?`<text x="66" y="${y+rowH*.65}" fill="var(--faint)" font-size="7" text-anchor="end">${n.testCount}✗</text>`:''} ${tags.length?`<text x="${68+w+5}" y="${y+rowH*.65}" fill="${tags[0].c}" font-size="9">${tags.map(x=>x.t).join(' · ')}</text>`:''}</g>`;
+  HS.$('btnContinue').addEventListener('click', () => {
+    HS.Audio.init(); HS.Audio.resume(); HS.Audio.enter();
+    const S = HS.load();
+    if(!S){ HS.$('btnContinue').style.display = 'none'; return; }
+    title.style.display = 'none';
+    game.startLoaded(S);
   });
-  const spy=10+((hi-s.price)/range)*360;
-  svg+=`<line x1="0" y1="${spy}" x2="520" y2="${spy}" stroke="var(--text)" stroke-dasharray="4 3" opacity="0.5"/><circle cx="504" cy="${spy}" r="4" fill="var(--text)"/>`;
-  document.getElementById('ladderSvg').innerHTML=svg;
-  const vg=document.getElementById('voteGrid');
-  if(cs.trinity){
-    const {gexVote,dexVote,vexVote,flowVote,strength}=cs.trinity;
-    const vixStr=state.vix?`${state.vix.toFixed(1)}`:'—';
-    const vixCls=state.vix&&state.vix>VIX_HALT_LEVEL?'bear':state.vix&&state.vix>VIX_HALT_LEVEL*.8?'gold':'bull';
-    vg.innerHTML=`
-      <div class="vote-cell"><div class="label">GEX</div><div class="val ${gexVote}">${gexVote.toUpperCase()}</div></div>
-      <div class="vote-cell"><div class="label">DEX</div><div class="val ${dexVote}">${dexVote.toUpperCase()}</div></div>
-      <div class="vote-cell"><div class="label">VEX</div><div class="val ${vexVote}">${vexVote.toUpperCase()}</div></div>
-      <div class="vote-cell"><div class="label">Flow</div><div class="val ${flowVote}">${flowVote.toUpperCase()}</div></div>
-      <div class="vote-cell"><div class="label">Trinity</div><div class="val gold">${strength}/4 ${cs.direction?cs.direction.toUpperCase():'—'}</div></div>
-      <div class="vote-cell"><div class="label">VIX</div><div class="val ${vixCls}">${vixStr}</div></div>`;
-  } else vg.innerHTML='';
-  const tradeable=isTradeableNow(s.sym), blocked2=state.blockedTickers.has(s.sym);
-  let statusLine='';
-  if(state.halted) statusLine='<span style="color:var(--red);">🛑 HALTED — loss limit reached</span>';
-  else if(isEventDay()) statusLine='<span style="color:var(--gold);">⚠ Event day — no new entries</span>';
-  else if(state.vix&&state.vix>VIX_HALT_LEVEL) statusLine=`<span style="color:var(--red);">⛔ VIX ${state.vix.toFixed(1)} > ${VIX_HALT_LEVEL} — gated</span>`;
-  else if(blocked2) statusLine='<span style="color:var(--red);">⊘ BLOCKED this session</span>';
-  else if(!tradeable) statusLine=`<span style="color:var(--faint);">⊘ ${nextWindowLabel(s.sym)??'no more windows today'}</span>`;
-  else if(cs.blocked) statusLine=`<span style="color:var(--cyan);">${cs.reasons[0]}</span>`;
-  else if(cs.score<6) statusLine=`<span style="color:var(--faint);">Score ${cs.score||0} — need 6+</span>`;
-  else {
-    const c2=candleDirection(s), negG=cs.zone==='neg-gex'||cs.zone==='below-pw';
-    const dok=negG?((cs.direction==='call'&&c2==='green')||(cs.direction==='put'&&c2==='red')):deflectionConfirmed(cs.direction||'',c2);
-    statusLine=dok?`<span style="color:var(--green);">✓ READY — ${cs.direction?.toUpperCase()} · $${cs.capital} · score ${cs.score}</span>`
-                  :`<span style="color:var(--gold);">⏳ waiting for ${cs.direction==='call'?(negG?'🟢 momentum':'🔴 deflection'):(negG?'🔴 momentum':'🟢 deflection')}</span>`;
-  }
-  document.getElementById('reasonsBox').innerHTML=
-    `<b>Regime:</b> ${cs.regime||'—'} &nbsp;|&nbsp; <b>Pattern:</b> ${cs.pattern||'—'} &nbsp;|&nbsp; <b>Score:</b> ${cs.score||0} &nbsp;|&nbsp; <b>Size:</b> $${cs.capital||0}<br>`+
-    `<b>Flip:</b> ${s.flipLevel.toFixed(1)} &nbsp;|&nbsp; <b>CW:</b> ${s.callWall} &nbsp;|&nbsp; <b>PW:</b> ${s.putWall}<br>`+
-    `<b>Stop:</b> ${cs.stopNode?.strike??'—'} (5-min) &nbsp;|&nbsp; <b>Target:</b> ${cs.targetNode?.strike??'—'}<br>`+
-    `<b>Status:</b> ${statusLine}<br><br>`+
-    (cs.reasons||[]).map(r=>'• '+r).join('<br>');
-}
-
-function renderPositions(){
-  const el=document.getElementById('positions');
-  if(!state.positions.length){ el.innerHTML='<div class="empty">No open positions</div>'; return; }
-  el.innerHTML='';
-  state.positions.forEach(p=>{
-    const pnl=p.pnl||0, div=document.createElement('div'); div.className='pos-card';
-    let sh='';
-    if(p.trailArmed) sh=`<span class="trail-badge">⚡ TRAIL · $${p.trailExit.toFixed(0)}</span>`;
-    else if(p.stopCountdown!==null){ const sc=Math.ceil(p.stopCountdown/1000); sh=`<span class="stop-timer">⏱ ${Math.floor(sc/60)}:${String(sc%60).padStart(2,'0')}</span>`; }
-    const pnlPct=((pnl/p.capital)*100).toFixed(0);
-    const markStr=p.liveMark?` · mark $${p.liveMark.toFixed(2)}`:'';
-    div.innerHTML=`
-      <div class="pos-top"><span class="pos-dir-${p.direction}">${p.sym} · ${p.direction.toUpperCase()}</span><span class="risk-pill risk-naked">$${p.capital}</span></div>
-      <div class="pos-meta">${p.entryRegime}·${p.entryPattern} · T${p.trinityStrength}/4 · ${p.entryCandle}<br>spot ${p.entrySpot} · strike ${p.buyStrike} · 0DTE${markStr}<br>stop ${p.stopStrike} · target ${p.targetStrike??'—'}</div>
-      <div class="pos-status">${sh}</div>
-      <div class="pos-pnl" style="color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}$${pnl.toFixed(2)} (${pnlPct}%)</div>`;
-    el.appendChild(div);
-  });
-}
-
-// ── #8 Performance panel ──────────────────────────────────────
-function renderPerformance(){
-  const ps=state.perfStats;
-  const total=ps.wins+ps.losses;
-  const winRate=total>0?((ps.wins/total)*100).toFixed(0):0;
-  const avgWin=ps.wins>0?(ps.totalWin/ps.wins).toFixed(2):0;
-  const avgLoss=ps.losses>0?(ps.totalLoss/ps.losses).toFixed(2):0;
-  const expectancy=total>0?((ps.wins/total)*(ps.totalWin/Math.max(ps.wins,1))-(ps.losses/total)*(ps.totalLoss/Math.max(ps.losses,1))).toFixed(2):0;
-  document.getElementById('perfGrid').innerHTML=`
-    <div class="perf-cell"><div class="label">Win Rate</div><div class="val" style="color:${winRate>=50?'var(--green)':'var(--red)'}">${winRate}%</div></div>
-    <div class="perf-cell"><div class="label">Trades</div><div class="val" style="color:var(--text)">${total}</div></div>
-    <div class="perf-cell"><div class="label">Avg Win</div><div class="val" style="color:var(--green)">+$${avgWin}</div></div>
-    <div class="perf-cell"><div class="label">Avg Loss</div><div class="val" style="color:var(--red)">-$${avgLoss}</div></div>
-    <div class="perf-cell"><div class="label">Best Win</div><div class="val" style="color:var(--green)">+$${ps.biggestWin.toFixed(2)}</div></div>
-    <div class="perf-cell"><div class="label">Expectancy</div><div class="val" style="color:${expectancy>=0?'var(--green)':'var(--red)'}">${expectancy>=0?'+':''}$${expectancy}</div></div>
-    <div class="perf-cell"><div class="label">Day P&L</div><div class="val" style="color:${state.dayPnl>=0?'var(--green)':'var(--red)'}">${state.dayPnl>=0?'+':''}$${state.dayPnl.toFixed(2)}</div></div>
-    <div class="perf-cell"><div class="label">Loss Limit</div><div class="val" style="color:var(--gold)">$${DAILY_LOSS_LIMIT} (${((-state.dayPnl/DAILY_LOSS_LIMIT)*100).toFixed(0)}% used)</div></div>`;
-  const tl=document.getElementById('tradeLog');
-  if(!state.closedToday.length){ tl.innerHTML='<div class="empty">No closed trades yet</div>'; return; }
-  tl.innerHTML=[...state.closedToday].reverse().map(t=>`
-    <div class="trade-row">
-      <span style="color:var(--text);font-weight:600;">${t.sym} ${t.direction.toUpperCase()}</span>
-      <span class="reason">${t.reason} · T${t.trinityStrength}/4 · ${t.entryRegime}</span>
-      <span class="${t.pnl>=0?'pnl-pos':'pnl-neg'}">${t.pnl>=0?'+':''}$${t.pnl.toFixed(2)}</span>
-    </div>`).join('');
-}
-
-function renderStats(){
-  document.getElementById('statOpen').textContent=`${state.positions.length} / ${state.currentCap}`;
-  const pe=document.getElementById('statPnl');
-  pe.textContent=(state.dayPnl>=0?'+':'')+'$'+Math.abs(state.dayPnl).toFixed(2);
-  pe.className=state.dayPnl>=0?'pos mono':'neg mono';
-  document.getElementById('statLimit').textContent=`$${DAILY_LOSS_LIMIT}`;
-  document.getElementById('statTrades').textContent=state.tradesToday;
-}
-
-function renderAll(){ renderSessionBar(); renderWatchlist(); renderLadder(); renderPositions(); renderStats(); }
-
-// ── Settings inputs ───────────────────────────────────────────
-function initSettings(){
-  document.getElementById('dailyLossInput').oninput=e=>{ DAILY_LOSS_LIMIT=Math.max(50,parseInt(e.target.value)||150); renderStats(); };
-  document.getElementById('vixHaltInput').oninput=e=>{ VIX_HALT_LEVEL=Math.max(15,parseInt(e.target.value)||30); };
-  document.getElementById('maxSizeInput').oninput=e=>{ MAX_POSITION_SIZE=Math.max(25,parseInt(e.target.value)||75); };
-  document.getElementById('eodCloseInput').oninput=e=>{ EOD_CLOSE_MIN=Math.max(930,parseInt(e.target.value)||955); };
-}
-
-// ── Key UI ────────────────────────────────────────────────────
-function updateKeyUI(){
-  const ks=document.getElementById('keyStatus'), ud=document.getElementById('uwDot');
-  if(UW_API_KEY){ ks.className='key-status set'; ks.textContent='● Key set — live data active'; ud.style.color='var(--green)'; document.getElementById('uwApiKey').placeholder='•••••••• (saved — paste new to update)'; }
-  else { ks.className='key-status unset'; ks.textContent='● No key — sim data'; ud.style.color='var(--faint)'; }
-}
-document.getElementById('saveKeyBtn').onclick=()=>{
-  const val=document.getElementById('uwApiKey').value.trim();
-  if(!val){ UW_API_KEY=''; localStorage.removeItem(KEY_STORAGE); updateKeyUI(); log('API key cleared','warn'); return; }
-  const uuidRe=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if(!uuidRe.test(val)){ log('Key format invalid — should be xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx','exit-loss'); return; }
-  UW_API_KEY=val; localStorage.setItem(KEY_STORAGE,val);
-  document.getElementById('uwApiKey').value='';
-  updateKeyUI();
-  log('API key saved — fetching live data now','system');
-  fetchLiveNodes(TICKERS[0].sym); fetchVIX();
-};
-
-// ── Main loop ────────────────────────────────────────────────
-let dexVexRotate=0;
-function tick(){
-  state.tickN++;
-  TICKERS.forEach(t=>{
-    const s=state.ticks[t.sym], saved=s.live?[...s.strikes.map(n=>({...n}))]:null;
-    driftTicker(s); if(saved) s.strikes=saved;
-  });
-  if(state.tickN%NODE_FETCH_EVERY_N_TICKS===0){
-    fetchLiveNodes(TICKERS[rotateIdx%TICKERS.length].sym); rotateIdx++;
-  }
-  // VIX fetch every ~60 ticks (~2min)
-  if(state.tickN%27===0) fetchVIX();
-  // DEX/VEX/Flow fetch rotated — every ~30 ticks per ticker
-  if(state.tickN%11===0){ fetchDEXVEXFlow(TICKERS[dexVexRotate%TICKERS.length].sym); dexVexRotate++; }
-  // live mark updates every 5 ticks for open positions
-  if(state.tickN%5===0) state.positions.forEach(p=>fetchLiveMark(p));
-  checkEODClose();
-  manage();
-  checkDailyLossLimit();
-  if(!state.halted&&(state.armed||state.mode==='paper')) TICKERS.forEach(t=>tryEnter(t.sym));
-  renderAll();
-}
-setInterval(tick,TICK_MS);
-tick();
-
-// ── Controls ─────────────────────────────────────────────────
-document.getElementById('killBtn').onclick=()=>{
-  state.mode='paper'; state.armed=false;
-  document.getElementById('modeBadge').textContent='PAPER MODE';
-  document.getElementById('modeBadge').className='badge paper';
-  document.getElementById('armPhrase').value='';
-  log('KILL SWITCH — disarmed','system');
-};
-document.getElementById('newDayBtn').onclick=()=>{
-  state.positions=[]; state.closedToday=[]; state.dayPnl=0; state.tradesToday=0;
-  state.currentCap=3; state.capLocked=false; state.halted=false; state.haltReason='';
-  state.blockedTickers.clear();
-  state.perfStats={wins:0,losses:0,totalWin:0,totalLoss:0,biggestWin:0,biggestLoss:0};
-  TICKERS.forEach(t=>state.ticks[t.sym]=seedTicker(t));
-  document.getElementById('haltedOverlay').style.display='none';
-  document.getElementById('modeBadge').textContent=state.mode==='live'?'LIVE MODE':'PAPER MODE';
-  document.getElementById('modeBadge').className=state.mode==='live'?'badge live':'badge paper';
-  log('New session — all limits reset · blocked tickers cleared · P&L cleared','system');
-  renderAll();
-};
-document.getElementById('haltResetBtn').onclick=()=>document.getElementById('newDayBtn').click();
-document.getElementById('armBtn').onclick=()=>{
-  if(document.getElementById('armPhrase').value.trim()!=='ENABLE LIVE'){ log('Arm failed — type: ENABLE LIVE','exit-loss'); return; }
-  state.mode='live'; state.armed=true;
-  document.getElementById('modeBadge').textContent='LIVE MODE';
-  document.getElementById('modeBadge').className='badge live';
-  log('LIVE TRADING ARMED — routing to Robinhood · loss limit $'+DAILY_LOSS_LIMIT,'system');
-};
-initSettings(); updateKeyUI();
-log('Heatseeker v3.9 — all 10 improvements active · paste UW key in Settings tab','system');
+  HS.$('btnTitleHelp').addEventListener('click', () => HS.$('help').classList.add('show'));
+})();
 </script>
 </body>
 </html>
