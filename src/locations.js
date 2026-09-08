@@ -1,4 +1,4 @@
-/* HEATSEEKER — what happens inside each building. */
+/* MARKET MAKER — what happens inside each building. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';

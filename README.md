@@ -1,6 +1,11 @@
-# HEATSEEKER — Broker
+# Market Maker
 
 A top-down 3D life sim about a stock broker's career, played in the browser.
+
+A market maker is the honest party who provides liquidity and takes the spread.
+It is also the person who makes the market do what he wants. And it is what you
+become, from nothing, over the course of the game. All three readings are on the
+table — which one you end up being is the whole point.
 
 You start at twenty-four, in your parents' basement, with $240. You walk a city,
 take a job on a brokerage floor, learn to read a tape, and climb — until the

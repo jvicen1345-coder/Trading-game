@@ -1,4 +1,4 @@
-/* HEATSEEKER — keyboard/touch input. */
+/* MARKET MAKER — keyboard/touch input. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';

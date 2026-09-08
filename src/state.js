@@ -1,4 +1,4 @@
-/* HEATSEEKER — game state: stats, clock, economy, career ladder, save/load. */
+/* MARKET MAKER — game state: stats, clock, economy, career ladder, save/load. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';

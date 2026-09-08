@@ -1,4 +1,4 @@
-/* HEATSEEKER — the trading shift. A live tape you trade against the clock. */
+/* MARKET MAKER — the trading shift. A live tape you trade against the clock. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';

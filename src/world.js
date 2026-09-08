@@ -1,4 +1,4 @@
-/* HEATSEEKER — renderer, camera, lighting, day/night. */
+/* MARKET MAKER — renderer, camera, lighting, day/night. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';

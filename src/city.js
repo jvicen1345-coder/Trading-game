@@ -1,4 +1,4 @@
-/* HEATSEEKER — procedural city: layout, geometry, traffic. */
+/* MARKET MAKER — procedural city: layout, geometry, traffic. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';

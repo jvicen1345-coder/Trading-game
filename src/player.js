@@ -1,4 +1,4 @@
-/* HEATSEEKER — the player avatar: WASD movement, collision, look. */
+/* MARKET MAKER — the player avatar: WASD movement, collision, look. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';

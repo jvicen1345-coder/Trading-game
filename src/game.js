@@ -1,4 +1,4 @@
-/* HEATSEEKER — main controller: loop, interaction, consequences, endings. */
+/* MARKET MAKER — main controller: loop, interaction, consequences, endings. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';

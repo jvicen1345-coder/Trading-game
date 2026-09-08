@@ -1,4 +1,4 @@
-/* HEATSEEKER — procedural audio. No files, just oscillators. */
+/* MARKET MAKER — procedural audio. No files, just oscillators. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';
