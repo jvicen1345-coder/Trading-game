@@ -52,8 +52,7 @@ HS.signed = n => (n >= 0 ? '+' : '') + HS.money(n);
 HS.pct = n => (n >= 0 ? '+' : '') + (n*100).toFixed(1) + '%';
 
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-HS.dayName = d => DAYS[(d - 1) % 7];
-HS.isWeekend = d => { const i = (d - 1) % 7; return i === 5 || i === 6; };
+HS.dayName = d => DAYS[(d - 1) % 7];   /* weekday/calendar helpers live in tape.js */
 HS.clockStr = function(hour){
   const h = Math.floor(hour), m = Math.floor((hour - h) * 60);
   const ap = h >= 12 ? 'PM' : 'AM';

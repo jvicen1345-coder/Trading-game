@@ -86,6 +86,8 @@ HS.World = function(THREE, canvas, city){
   const lampBulbs = cityGroup.userData.lampBulbs;
 
   /* Fake lamplight: additive discs on the ground, one draw call for the lot. */
+  const steam = cityGroup.userData.steam;
+
   const lampPools = (function(){
     const cv = document.createElement('canvas'); cv.width = cv.height = 128;
     const g2 = cv.getContext('2d');
@@ -201,6 +203,11 @@ HS.World = function(THREE, canvas, city){
 
     playerLight.position.set(px, 7, pz);
     playerLight.intensity = s.night * 0.85;
+
+    if(steam){
+      steam.mat.opacity = 0.06 + Math.abs(Math.sin(elapsed * 0.7)) * 0.10;
+      steam.mesh.rotation.y += dt * 0.15;
+    }
 
     traffic.userData.update(dt, s.night > 0.3);
 

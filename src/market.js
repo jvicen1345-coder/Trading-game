@@ -1,24 +1,23 @@
 /* MARKET MAKER — the trading session.
-   The underlying runs a regime-driven tape; you trade options on it from an
-   opening chain. The session *is* the 9:30-16:00 day, so 0DTE dies at the bell. */
+   You always trade your own account. Contracts are picked by moneyness rather
+   than by strike arithmetic, and they survive the closing bell unless their
+   expiry says otherwise. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';
 const $ = HS.$;
 
-const SIM_HZ = 10, DT = 1/SIM_HZ, TICKS_PER_BAR = 5, VIEW_BARS = 52;
-const STRIKES = 7;                       // 3 below, ATM, 3 above
-const CS = 100;                          // shares per contract
+const SIM_HZ = 10, DT = 1/SIM_HZ, TICKS_PER_BAR = 6, VIEW_BARS = 56;
+const CS = 100;
 
-const SYMBOLS = {
-  VLT:{ name:'Volatis Systems',  px: 84.20, tick:0.01 },
-  NRG:{ name:'Nordrig Energy',   px:142.75, tick:0.01 },
-  QNT:{ name:'Quantex Labs',     px: 31.60, tick:0.01 },
-  BTX:{ name:'Bitrex Composite', px:608.00, tick:0.05 },
-  ARC:{ name:'Arclight Media',   px: 57.40, tick:0.01 },
-  HLX:{ name:'Helix Bio',        px: 96.10, tick:0.01 }
-};
-HS.SYMBOLS = SYMBOLS;
+/* Five rungs either side of the money, labelled rather than numbered. */
+const MONEY = [
+  { key:'deep', label:'DEEP ITM', sig: 1.4, hint:'Moves almost like the stock' },
+  { key:'itm',  label:'ITM',      sig: 0.6, hint:'Already has real value' },
+  { key:'atm',  label:'ATM',      sig: 0.0, hint:'The balanced bet' },
+  { key:'otm',  label:'OTM',      sig:-0.6, hint:'Cheap, needs a move' },
+  { key:'far',  label:'FAR OTM',  sig:-1.4, hint:'Lottery ticket' }
+];
 
 const HEADLINES = {
   up:['beats on earnings, guides higher','lands a sovereign supply contract',
@@ -29,64 +28,63 @@ const HEADLINES = {
         'loses its anchor client','has its credit facility pulled']
 };
 
-/* What the desk lets you see, earned with skill. */
-HS.showDelta = s => s >= 25;
-HS.showTheta = s => s >= 45;
-HS.showIv    = s => s >= 65;
-
 HS.Market = {};
 
 HS.Market.run = function(opts, done){
+  const G = opts.state;                       // live game state — mutated directly
   const cfg = Object.assign({
-    symbol:'VLT', capital:10000, duration:75, target:0.10,
-    vol:0.0011, trendStr:0.9, chop:0.34, regimeT:[7,14],
-    skill:10, rank:1, edge:null, feePerContract:0.65,
-    news:[16,30], shock:0.03, title:'SESSION', sub:''
-  }, opts || {});
+    duration:110, target:0.08, vol:0.0011, trendStr:0.9, chop:0.34,
+    regimeT:[9,18], leverage:1, feePerContract:0.65,
+    news:[22,40], shock:0.02, title:'SESSION', sub:''
+  }, opts);
 
-  const base = SYMBOLS[cfg.symbol];
+  const sym = cfg.symbol;
+  const base = HS.TICKERS[sym];
   const TICKS = Math.round(cfg.duration * SIM_HZ);
-  const baseIv = HS.impliedFromTape(cfg.vol, TICKS);
+  const baseIv = HS.impliedFromTape(cfg.vol * base.vol, TICKS);
   const dailySigma = baseIv / Math.sqrt(252);
+  const startCash = G.cash;
+  const startEquity = () => cfg.startEquity;
 
-  const S = {
-    price: base.px * (0.94 + Math.random()*0.12),
-    tickSize: base.tick,
+  const M = {
+    price: HS.tickerPrice(G, sym), tickSize: base.tick,
     open:0, bars:[], sub:0, tick:0,
     regime:null, regimeLeft:0, shock:0, shockLeft:0,
-    cash: cfg.capital, pos:null,
-    selected:null, qty:1, expIdx:0,
+    selected:null, qty:1, expIdx:0, tab:'chain',
     acc:0, last:0, running:false, finished:false,
-    trades:0, wins:0, streak:0, bestStreak:0,
-    peak:cfg.capital, trough:cfg.capital,
+    trades:0, wins:0,
+    peak:0, trough:Infinity,
     nextNews: cfg.news ? cfg.news[0]*0.6 + Math.random()*cfg.news[1] : Infinity,
     newsHide:0, chain:null
   };
-  S.price = Math.round(S.price / S.tickSize) * S.tickSize;
-  S.open = S.price;
-  S.bars.push(bar(S.price));
+  M.open = M.price;
+  M.bars.push(bar(M.price));
   newRegime(true);
-
-  // warm the tape so the chart opens with readable history
   for(let i = 0; i < VIEW_BARS * TICKS_PER_BAR; i++) step(true);
-  S.open = S.price; S.shock = 0; S.shockLeft = 0; S.tick = 0;
-  S.bars = S.bars.slice(-VIEW_BARS);
+  // Rescale the warm-up so yesterday's shape runs continuously into today's
+  // real opening price — no artificial gap on the last candle.
+  const real = HS.tickerPrice(G, sym);
+  const k = real / M.price;
+  M.bars.forEach(b => { b.o*=k; b.h*=k; b.l*=k; b.c*=k; });
+  M.price = real; M.open = real;
+  M.shock = 0; M.shockLeft = 0; M.tick = 0;
+  M.bars = M.bars.slice(-VIEW_BARS);
   newRegime(true);
 
-  // a chart review pre-loads the day with a direction you already know about
   if(cfg.edge){
     const d = cfg.edge.dir * (0.7 + Math.random()*0.5) * cfg.trendStr;
-    S.regime = { d, kind: d > 0 ? 'BID' : 'OFFERED' };
-    S.regimeLeft = Math.max(S.regimeLeft, cfg.duration * 0.42);
+    M.regime = { d, kind: d > 0 ? 'BID' : 'OFFERED' };
+    M.regimeLeft = Math.max(M.regimeLeft, cfg.duration * 0.40);
   }
 
-  const targetEquity = cfg.capital * (1 + cfg.target);
-  const bustEquity   = cfg.capital * 0.40;
-  const expiries = HS.EXPIRIES.filter(e => cfg.rank >= e.unlockRank);
-  if(!expiries.length) expiries.push(HS.EXPIRIES[0]);
+  const expiries = ['0dte','weekly','leap']
+    .map(k => HS.EXPIRY_KINDS[k])
+    .filter(e => cfg.rank >= e.unlockRank || cfg.ignoreRankGate);
+  if(!expiries.length) expiries.push(HS.EXPIRY_KINDS.weekly);
+  M.expIdx = Math.max(0, expiries.findIndex(e => e.id === 'weekly'));
 
   function bar(p){ return { o:p, h:p, l:p, c:p }; }
-  const prog = () => HS.clamp(S.tick / TICKS, 0, 1);
+  const prog = () => HS.clamp(M.tick / TICKS, 0, 1);
   const marketHour = () => HS.MARKET_OPEN + prog() * (HS.MARKET_CLOSE - HS.MARKET_OPEN);
 
   function newRegime(first){
@@ -96,147 +94,162 @@ HS.Market.run = function(opts, done){
     else if(r < side * 2) d = -(0.55 + Math.random()*0.45) * cfg.trendStr;
     else                  d = (Math.random()*0.28 - 0.14);
     if(first && Math.abs(d) > 0.2) d *= 0.6;
-    S.regime = { d, kind: d > 0.2 ? 'BID' : d < -0.2 ? 'OFFERED' : 'RANGE' };
-    S.regimeLeft = cfg.regimeT[0] + Math.random() * (cfg.regimeT[1] - cfg.regimeT[0]);
+    M.regime = { d, kind: d > 0.2 ? 'BID' : d < -0.2 ? 'OFFERED' : 'RANGE' };
+    M.regimeLeft = cfg.regimeT[0] + Math.random() * (cfg.regimeT[1] - cfg.regimeT[0]);
   }
 
   function step(warm){
-    S.regimeLeft -= DT;
-    if(S.regimeLeft <= 0) newRegime(false);
-    const stretch = (S.price - S.open) / S.open;
-    let ret = (S.regime.d * cfg.vol * 0.45) + (HS.gauss() * cfg.vol) + (-stretch * 0.05 * cfg.vol * 8);
-    if(S.shockLeft > 0){ ret += S.shock; S.shockLeft--; }
-    S.price = Math.max(S.tickSize * 5, S.price * (1 + ret));
-    S.price = Math.round(S.price / S.tickSize) * S.tickSize;
-    const b = S.bars[S.bars.length-1];
-    b.c = S.price;
-    if(S.price > b.h) b.h = S.price;
-    if(S.price < b.l) b.l = S.price;
-    if(++S.sub >= TICKS_PER_BAR){
-      S.sub = 0;
-      S.bars.push(bar(S.price));
-      if(S.bars.length > 320) S.bars.shift();
+    M.regimeLeft -= DT;
+    if(M.regimeLeft <= 0) newRegime(false);
+    const stretch = (M.price - M.open) / M.open;
+    let ret = (M.regime.d * cfg.vol * 0.45) + (HS.gauss() * cfg.vol) + (-stretch * 0.05 * cfg.vol * 8);
+    if(M.shockLeft > 0){ ret += M.shock; M.shockLeft--; }
+    M.price = Math.max(M.tickSize * 5, M.price * (1 + ret));
+    M.price = Math.round(M.price / M.tickSize) * M.tickSize;
+    const b = M.bars[M.bars.length-1];
+    b.c = M.price;
+    if(M.price > b.h) b.h = M.price;
+    if(M.price < b.l) b.l = M.price;
+    if(++M.sub >= TICKS_PER_BAR){
+      M.sub = 0;
+      M.bars.push(bar(M.price));
+      if(M.bars.length > 340) M.bars.shift();
     }
-    if(!warm) S.tick++;
-  }
-
-  /* ---------- book ---------- */
-  function markPos(){
-    if(!S.pos) return null;
-    return HS.quoteContract(S.pos.contract, S.price, baseIv, prog());
-  }
-  function posValue(){
-    if(!S.pos) return 0;
-    const q = markPos();
-    return S.pos.qty * q.mid * CS;              // negative qty => a liability
-  }
-  const equity = () => S.cash + posValue();
-  function openPnl(){
-    if(!S.pos) return 0;
-    const q = markPos();
-    return S.pos.qty * (q.mid - S.pos.entry) * CS;
-  }
-
-  function maxQty(isShort){
-    const eq = equity();
-    if(!S.selected) return 0;
-    const q = HS.quoteContract(S.selected, S.price, baseIv, prog());
-    if(isShort){
-      const margin = S.selected.strike * CS * 0.25;      // naked margin
-      return Math.max(0, Math.floor(eq * 0.6 / Math.max(1, margin)));
+    if(!warm){
+      M.tick++;
+      G.market.tickers[sym].price = M.price;    // the tape is the real tape
     }
-    const cost = q.ask * CS + cfg.feePerContract;
-    return Math.max(0, Math.floor(eq * 0.85 / Math.max(0.01, cost)));
   }
 
+  /* ---------- marking ---------- */
+  function spotOf(p){ return p.sym === sym ? M.price : HS.tickerPrice(G, p.sym); }
+  function quoteOf(p){
+    const T = HS.yearsLeft(p, G.day, prog());
+    const s = spotOf(p);
+    const iv = HS.ivFor(baseIv * HS.EXPIRY_KINDS[p.kind].ivMult, s, p.strike, T);
+    const g = HS.blackScholes(p.isCall, s, p.strike, T, iv);
+    const mid = g.price;
+    const sp = HS.clamp(0.022 + 0.075/(mid+0.6) + (p.kind==='0dte'?0.035:0), 0.02, 0.34);
+    const hw = Math.max(0.01, mid*sp/2);
+    return { mid, bid:Math.max(0,mid-hw), ask:mid+hw, iv, T,
+             delta:g.delta, theta:g.theta/252, gamma:g.gamma };
+  }
+  function bookValue(){
+    let v = 0;
+    G.positions.forEach(p => { v += p.qty * quoteOf(p).mid * CS; });
+    return v;
+  }
+  const equity = () => G.cash + bookValue();
+
+  const feeEach = () => cfg.feePerContract * HS.feeMul(G);
+  function buyingPower(){ return equity() * cfg.leverage * HS.sizeMul(G); }
+
+  function maxQty(contract, isWrite){
+    const q = quoteOf(contract);
+    if(isWrite){
+      const margin = contract.strike * CS * 0.25 * HS.marginMul(G);
+      return Math.max(0, Math.floor(buyingPower() * 0.5 / Math.max(1, margin)));
+    }
+    const cost = q.ask * CS + feeEach();
+    return Math.max(0, Math.floor(buyingPower() * 0.9 / Math.max(0.01, cost)));
+  }
+
+  /* ---------- trading ---------- */
   function openPos(dir){
-    if(!S.selected || S.pos) return;
-    const qty = Math.min(S.qty, maxQty(dir < 0));
-    if(qty < 1){ flash('Not enough capital for that size.'); return; }
-    const q = HS.quoteContract(S.selected, S.price, baseIv, prog());
+    if(!M.selected) return;
+    const c = M.selected;
+    if(c.kind === 'leap' && HS.hasLeap(G) &&
+       G.positions.filter(p=>p.kind==='leap').length >= HS.leapSlots(G)){
+      flash('Your LEAP slot is already used.'); return;
+    }
+    const qty = Math.min(M.qty, maxQty(c, dir < 0));
+    if(qty < 1){ flash('Not enough buying power for that size.'); return; }
+    const q = quoteOf(c);
     const px = dir > 0 ? q.ask : q.bid;
-    const fee = cfg.feePerContract * qty;
-    S.cash -= dir * px * CS * qty;               // buying spends, writing credits
-    S.cash -= fee;
-    S.pos = { contract:S.selected, qty: dir * qty, entry: px };
+    G.cash -= dir * px * CS * qty + feeEach() * qty;
+    G.positions.push(HS.newPosition({
+      sym:c.sym, isCall:c.isCall, strike:c.strike, kind:c.kind,
+      expiryDay:c.expiryDay, qty: dir*qty, entry:px, openedDay:G.day, moneyness:c.moneyness
+    }));
     dir > 0 ? HS.Audio.buy() : HS.Audio.sell();
     log('<b class="' + (dir>0?'g':'r') + '">' + (dir>0?'BOT':'SOLD') + '</b> ' + qty + 'x ' +
-        HS.contractName(S.selected) + ' @ ' + px.toFixed(2));
-    sync();
+        HS.posName(c, G.day));
+    renderBook(); sync();
   }
 
-  function closePos(quiet){
-    if(!S.pos) return 0;
-    const q = markPos();
-    const long = S.pos.qty > 0;
+  function closeById(id, quiet){
+    const i = G.positions.findIndex(p => p.id === id);
+    if(i < 0) return 0;
+    const p = G.positions[i];
+    const q = quoteOf(p);
+    const long = p.qty > 0;
     const px = long ? q.bid : q.ask;
-    const qty = Math.abs(S.pos.qty);
-    const fee = cfg.feePerContract * qty;
-    S.cash += S.pos.qty * px * CS;
-    S.cash -= fee;
-    const net = S.pos.qty * (px - S.pos.entry) * CS - fee;
-    const name = HS.contractName(S.pos.contract);
-    S.pos = null;
-    S.trades++;
-    if(net > 0){ S.wins++; S.streak++; if(S.streak > S.bestStreak) S.bestStreak = S.streak; }
-    else S.streak = 0;
+    const qty = Math.abs(p.qty);
+    const net = p.qty * (px - p.entry) * CS - feeEach()*qty;
+    G.cash += p.qty * px * CS - feeEach()*qty;
+    G.positions.splice(i, 1);
+    M.trades++;
+    if(net > 0) M.wins++;
     if(!quiet){
       pop(HS.signed(net), net >= 0);
       net >= 0 ? HS.Audio.cash() : HS.Audio.loss();
-      log('<b class="' + (net>=0?'g':'r') + '">CLOSE</b> ' + name + ' ' +
-          '<span class="' + (net>=0?'g':'r') + '">' + HS.signed(net) + '</span>');
+      log('<b class="' + (net>=0?'g':'r') + '">CLOSE</b> ' + HS.posName(p, G.day) +
+          ' <span class="' + (net>=0?'g':'r') + '">' + HS.signed(net) + '</span>');
     }
-    sync();
+    renderBook(); sync();
     return net;
   }
 
-  /* Settle anything still open at the bell, at intrinsic. */
-  function settle(){
-    if(!S.pos) return;
-    const c = S.pos.contract;
-    const intrinsic = c.isCall ? Math.max(0, S.price - c.strike) : Math.max(0, c.strike - S.price);
-    const net = S.pos.qty * (intrinsic - S.pos.entry) * CS;
-    S.cash += S.pos.qty * intrinsic * CS;
-    log('<b class="y">BELL</b> ' + HS.contractName(c) + ' settles at ' + intrinsic.toFixed(2));
-    S.pos = null;
-    S.trades++;
-    if(net > 0) S.wins++;
+  /* Anything whose last day this is settles at the close, at intrinsic. */
+  function settleAtBell(){
+    const td = HS.tradingDay(G.day);
+    const report = [];
+    G.positions = G.positions.filter(p => {
+      if(p.expiryDay > td) return true;
+      const v = HS.intrinsic(p, spotOf(p));
+      const pnl = p.qty * (v - p.entry) * CS;
+      G.cash += p.qty * v * CS;
+      report.push({ name:HS.posName(p, G.day), value:v, pnl });
+      M.trades++; if(pnl > 0) M.wins++;
+      return false;
+    });
+    return report;
   }
 
   function fireNews(){
     const up = Math.random() < 0.5;
     const mag = cfg.shock * (0.45 + Math.random()*0.55);
-    S.shock = (up ? 1 : -1) * (Math.pow(1 + mag, 1/3) - 1);
-    S.shockLeft = 3;
+    M.shock = (up ? 1 : -1) * (Math.pow(1 + mag, 1/3) - 1);
+    M.shockLeft = 3;
     const list = up ? HEADLINES.up : HEADLINES.down;
     $('mkNewsText').textContent = base.name + ' ' + list[Math.floor(Math.random()*list.length)];
     $('mkNews').classList.add('show');
-    S.newsHide = 5;
+    M.newsHide = 6;
     HS.Audio.alarm();
-    S.nextNews = cfg.news[0] + Math.random() * (cfg.news[1] - cfg.news[0]);
+    M.nextNews = cfg.news[0] + Math.random() * (cfg.news[1] - cfg.news[0]);
   }
 
   /* ---------- dom ---------- */
   const root = $('market');
   $('mkTitle').textContent = cfg.title;
-  $('mkSub').textContent = cfg.sub || (base.name + ' · ' + cfg.symbol);
+  $('mkSub').textContent = cfg.sub || (base.name + ' · ' + sym);
   $('mkNews').classList.remove('show');
   $('mkLog').innerHTML = '';
   root.classList.add('show');
 
   const edgeBadge = $('mkEdge');
   if(cfg.edge){
-    edgeBadge.style.display = '';
     const shown = cfg.edge.shown != null ? cfg.edge.shown : cfg.edge.dir;
+    edgeBadge.style.display = '';
     edgeBadge.className = 'mk-edge ' + (shown > 0 ? 'golden' : 'death');
     edgeBadge.textContent = (shown > 0 ? '▲ GOLDEN CROSS' : '▼ DEATH CROSS') +
-                            ' · ' + cfg.edge.confidence + '% READ';
+                            ' · ' + cfg.edge.confidence + '%';
   } else edgeBadge.style.display = 'none';
 
   function log(html){
     const d = HS.el('div', null, html);
     $('mkLog').insertBefore(d, $('mkLog').firstChild);
-    while($('mkLog').children.length > 12) $('mkLog').removeChild($('mkLog').lastChild);
+    while($('mkLog').children.length > 10) $('mkLog').removeChild($('mkLog').lastChild);
   }
   function pop(text, good){
     const e = HS.el('div', 'mk-pop', text);
@@ -246,129 +259,132 @@ HS.Market.run = function(opts, done){
     setTimeout(() => e.remove(), 1100);
   }
   let flashT = 0;
-  function flash(msg){
-    const el = $('mkFlash');
-    el.textContent = msg; el.classList.add('show'); flashT = 1.6;
-  }
+  function flash(msg){ $('mkFlash').textContent = msg; $('mkFlash').classList.add('show'); flashT = 1.8; }
 
   /* ---------- expiry tabs ---------- */
   const tabsEl = $('mkExpiries');
   tabsEl.innerHTML = '';
-  HS.EXPIRIES.forEach(e => {
-    const locked = cfg.rank < e.unlockRank;
+  ['0dte','weekly','leap'].forEach(k => {
+    const e = HS.EXPIRY_KINDS[k];
+    const locked = cfg.rank < e.unlockRank && !cfg.ignoreRankGate;
     const b = HS.el('button', 'mk-exp' + (locked ? ' locked' : ''));
-    b.innerHTML = '<span>' + e.name + '</span><small>' + (locked ? 'RANK ' + e.unlockRank : e.label) + '</small>';
-    if(!locked){
-      b.addEventListener('click', () => {
-        S.expIdx = expiries.indexOf(e);
-        S.selected = null;
-        HS.Audio.click();
-        renderTabs(); buildChain(); renderChain(); sync();
-      });
-    }
+    const days = HS.expiryDayFor(k, G.day) - HS.tradingDay(G.day);
+    b.innerHTML = '<span>' + e.name + '</span><small>' +
+      (locked ? 'RANK ' + e.unlockRank : (k==='0dte' ? 'today' : days + 'd')) + '</small>';
     b.dataset.exp = e.id;
+    if(!locked) b.addEventListener('click', () => {
+      M.expIdx = expiries.indexOf(e); M.selected = null;
+      HS.Audio.click(); renderTabs(); renderChain(); sync();
+    });
     tabsEl.appendChild(b);
   });
   function renderTabs(){
-    [...tabsEl.children].forEach(b => {
-      b.classList.toggle('sel', b.dataset.exp === expiries[S.expIdx].id);
-    });
+    [...tabsEl.children].forEach(b =>
+      b.classList.toggle('sel', b.dataset.exp === expiries[M.expIdx].id));
   }
   renderTabs();
 
-  /* ---------- chain ---------- */
-  function buildChain(){
-    S.chain = HS.buildChain({
-      spot: S.price, expiry: expiries[S.expIdx],
-      baseIv, dailySigma, prog: prog(), strikes: STRIKES
-    });
+  /* ---------- chain by moneyness ---------- */
+  /* Rungs are whole steps off the money, and the step is sized by what this
+     contract can actually move before it dies. Index-based, so the five rungs
+     are always five distinct strikes even in the last hour of a 0DTE. */
+  function contractFor(m, isCall){
+    const kind = expiries[M.expIdx].id;
+    const expiryDay = HS.expiryDayFor(kind, G.day);
+    const days = Math.max(0.12, (expiryDay - HS.tradingDay(G.day)) + (1 - prog()));
+    const em = dailySigma * Math.sqrt(days);
+    const step = Math.max(base.tick * 5, HS.strikeStep(M.price, em * 0.7));
+    const atm = Math.round(M.price / step) * step;
+    const n = MONEY.indexOf(m) - 2;                  // -2 .. +2
+    const strike = Math.max(step, +(atm + (isCall ? n : -n) * step).toFixed(4));
+    return { sym, isCall, strike, kind, moneyness:m.label, expiryDay };
   }
 
   const chainEl = $('mkChain');
-  let chainRows = [];
+  let chainCells = [];
   function renderChain(){
     chainEl.innerHTML = '';
-    chainRows = [];
-    const showD = HS.showDelta(cfg.skill);
-
-    const head = HS.el('div', 'ch-head');
-    head.innerHTML = '<span class="side">CALLS</span>' +
-                     '<span class="k">STRIKE</span>' +
-                     '<span class="side">PUTS</span>';
+    chainCells = [];
+    const head = HS.el('div','ch-head','<span class="side call">CALLS</span>' +
+      '<span class="k">' + expiries[M.expIdx].name + '</span>' +
+      '<span class="side put">PUTS</span>');
     chainEl.appendChild(head);
 
-    const sub = HS.el('div', 'ch-row ch-sub');
-    sub.dataset.d = showD ? '1' : '0';
-    sub.innerHTML =
-      '<span class="ch-side">' + (showD ? '<span>BID</span><span>ASK</span><span>Δ</span>'
-                                        : '<span>BID</span><span>ASK</span>') + '</span>' +
-      '<span class="ch-strike"></span>' +
-      '<span class="ch-side">' + (showD ? '<span>Δ</span><span>BID</span><span>ASK</span>'
-                                        : '<span>BID</span><span>ASK</span>') + '</span>';
-    chainEl.appendChild(sub);
-
-    S.chain.strikes.forEach(r => {
-      const row = HS.el('div', 'ch-row');
-      row.dataset.d = showD ? '1' : '0';
-      const atm = Math.abs(r.strike - S.chain.atm) < 1e-6;
-      if(atm) row.classList.add('atm');
-
-      const cCell = HS.el('button', 'ch-side call');
-      const pCell = HS.el('button', 'ch-side put');
-      const strike = HS.el('span', 'ch-strike', r.strike.toFixed(r.strike < 20 ? 2 : 1));
-
-      cCell.innerHTML = '<span class="b">' + r.call.bid.toFixed(2) + '</span>' +
-                        '<span class="a">' + r.call.ask.toFixed(2) + '</span>' +
-                        (showD ? '<span class="d">' + r.call.delta.toFixed(2) + '</span>' : '');
-      pCell.innerHTML = (showD ? '<span class="d">' + r.put.delta.toFixed(2) + '</span>' : '') +
-                        '<span class="b">' + r.put.bid.toFixed(2) + '</span>' +
-                        '<span class="a">' + r.put.ask.toFixed(2) + '</span>';
-
-      if(r.strike < S.price) cCell.classList.add('itm');
-      if(r.strike > S.price) pCell.classList.add('itm');
-      cCell.addEventListener('click', () => select(r.strike, true));
-      pCell.addEventListener('click', () => select(r.strike, false));
-
-      row.appendChild(cCell); row.appendChild(strike); row.appendChild(pCell);
+    MONEY.forEach(m => {
+      const row = HS.el('div','ch-row');
+      const c = HS.el('button','ch-cell call');
+      const lab = HS.el('span','ch-money','<b>' + m.label + '</b>');
+      const pu = HS.el('button','ch-cell put');
+      c.addEventListener('click', () => select(m, true));
+      pu.addEventListener('click', () => select(m, false));
+      row.appendChild(c); row.appendChild(lab); row.appendChild(pu);
       chainEl.appendChild(row);
-      chainRows.push({ row, cCell, pCell, strike: r.strike });
+      chainCells.push({ m, c, pu });
     });
-    markSelection();
+    updateChain();
   }
-
-  function updateChainPrices(){
-    const showD = HS.showDelta(cfg.skill);
-    S.chain.strikes.forEach((r, i) => {
-      const cr = chainRows[i];
-      if(!cr) return;
-      cr.cCell.children[0].textContent = r.call.bid.toFixed(2);
-      cr.cCell.children[1].textContent = r.call.ask.toFixed(2);
-      if(showD) cr.cCell.children[2].textContent = r.call.delta.toFixed(2);
-      const pOff = showD ? 1 : 0;
-      if(showD) cr.pCell.children[0].textContent = r.put.delta.toFixed(2);
-      cr.pCell.children[pOff].textContent = r.put.bid.toFixed(2);
-      cr.pCell.children[pOff+1].textContent = r.put.ask.toFixed(2);
-      cr.row.classList.toggle('atm', Math.abs(r.strike - S.chain.atm) < 1e-6);
-      cr.cCell.classList.toggle('itm', r.strike < S.price);
-      cr.pCell.classList.toggle('itm', r.strike > S.price);
+  function updateChain(){
+    const showD = HS.showDelta(cfg.skill) || HS.alwaysGreeks(G);
+    chainCells.forEach(cc => {
+      const cc1 = contractFor(cc.m, true), pp1 = contractFor(cc.m, false);
+      const qc = quoteOf(cc1), qp = quoteOf(pp1);
+      cc.c.innerHTML  = '<span class="px">' + qc.ask.toFixed(2) + '</span>' +
+                        '<span class="k">' + cc1.strike.toFixed(cc1.strike<20?2:1) + '</span>' +
+                        (showD ? '<span class="d">Δ' + qc.delta.toFixed(2) + '</span>' : '');
+      cc.pu.innerHTML = '<span class="px">' + qp.ask.toFixed(2) + '</span>' +
+                        '<span class="k">' + pp1.strike.toFixed(pp1.strike<20?2:1) + '</span>' +
+                        (showD ? '<span class="d">Δ' + qp.delta.toFixed(2) + '</span>' : '');
+      const sel = M.selected;
+      cc.c.classList.toggle('sel', !!sel && sel.isCall && sel.moneyness === cc.m.label);
+      cc.pu.classList.toggle('sel', !!sel && !sel.isCall && sel.moneyness === cc.m.label);
     });
   }
+  function select(m, isCall){
+    M.selected = contractFor(m, isCall);
+    M.selected.hint = m.hint;
+    HS.Audio.click(); updateChain(); sync();
+  }
+  renderChain();
 
-  function select(strike, isCall){
-    if(S.pos){ flash('Close your position first.'); return; }
-    S.selected = { symbol: cfg.symbol, strike, isCall, expiry: expiries[S.expIdx] };
+  /* ---------- book ---------- */
+  const bookEl = $('mkBook');
+  function renderBook(){
+    bookEl.innerHTML = '';
+    if(!G.positions.length){
+      bookEl.appendChild(HS.el('div','bk-empty','Nothing open. Pick a contract from the chain.'));
+      $('mkBookCount').textContent = '0';
+      return;
+    }
+    $('mkBookCount').textContent = String(G.positions.length);
+    G.positions.forEach(p => {
+      const q = quoteOf(p);
+      const pnl = p.qty * (q.mid - p.entry) * CS;
+      const row = HS.el('div','bk-row' + (p.qty>0?' long':' short'));
+      const dying = p.expiryDay <= HS.tradingDay(G.day);
+      row.innerHTML =
+        '<div class="bk-id"><b>' + (p.qty>0?'+':'') + p.qty + ' ' + HS.posName(p, G.day) + '</b>' +
+        '<em>' + p.moneyness + ' · ' + (dying ? '<span class="dying">expires at the bell</span>'
+                                              : HS.expiryLabel(p, G.day) + ' left') + '</em></div>' +
+        '<div class="bk-pnl ' + (pnl>=0?'g':'r') + '">' + HS.signed(pnl) + '</div>';
+      const btn = HS.el('button','bk-x','CLOSE');
+      btn.addEventListener('click', () => closeById(p.id, false));
+      row.appendChild(btn);
+      bookEl.appendChild(row);
+    });
+  }
+  renderBook();
+
+  $('mkTabChain').addEventListener('click', () => setTab('chain'));
+  $('mkTabBook').addEventListener('click', () => setTab('book'));
+  function setTab(t){
+    M.tab = t;
+    $('mkTabChain').classList.toggle('sel', t==='chain');
+    $('mkTabBook').classList.toggle('sel', t==='book');
+    $('mkChainPane').style.display = t==='chain' ? '' : 'none';
+    $('mkBookPane').style.display  = t==='book' ? '' : 'none';
     HS.Audio.click();
-    markSelection(); sync();
   }
-  function markSelection(){
-    chainRows.forEach(cr => {
-      const sel = S.selected && Math.abs(cr.strike - S.selected.strike) < 1e-6;
-      cr.cCell.classList.toggle('sel', !!sel && S.selected.isCall);
-      cr.pCell.classList.toggle('sel', !!sel && !S.selected.isCall);
-    });
-  }
-
-  buildChain(); renderChain();
+  setTab('chain');
 
   /* ---------- canvas ---------- */
   const cv = $('mkChart'), cx = cv.getContext('2d');
@@ -387,14 +403,13 @@ HS.Market.run = function(opts, done){
   function draw(){
     if(CW < 10) fit();
     cx.clearRect(0,0,CW,CH);
-    const bars = S.bars.slice(-VIEW_BARS);
+    const bars = M.bars.slice(-VIEW_BARS);
     if(!bars.length) return;
     let hi = -Infinity, lo = Infinity;
     for(const b of bars){ if(b.h>hi) hi=b.h; if(b.l<lo) lo=b.l; }
-    const strikesShown = S.chain ? S.chain.strikes.map(r=>r.strike) : [];
-    const selK = S.selected ? S.selected.strike : (S.pos ? S.pos.contract.strike : null);
+    const selK = M.selected ? M.selected.strike : null;
     if(selK != null){ hi = Math.max(hi, selK); lo = Math.min(lo, selK); }
-    const span = Math.max(hi-lo, S.price*0.004);
+    const span = Math.max(hi-lo, M.price*0.004);
     hi += span*0.10; lo -= span*0.10;
     const range = hi-lo;
     const pw = CW-PAD_R-PAD_L, ph = CH-PAD_T-PAD_B;
@@ -409,32 +424,30 @@ HS.Market.run = function(opts, done){
       cx.strokeStyle = 'rgba(255,255,255,.04)';
       cx.beginPath(); cx.moveTo(PAD_L,yy); cx.lineTo(CW-PAD_R,yy); cx.stroke();
       cx.fillStyle = '#4C5568';
-      cx.fillText(p.toFixed(S.tickSize < 0.05 ? 2 : 1), CW-PAD_R+6, yy);
+      cx.fillText(p.toFixed(M.tickSize < 0.05 ? 2 : 1), CW-PAD_R+6, yy);
     }
 
-    // strike ladder, so the chain and the chart are visibly the same thing
-    strikesShown.forEach(K => {
-      const yy = y(K);
+    // where your open strikes sit, plus the one you are looking at
+    G.positions.filter(p => p.sym === sym).forEach(p => {
+      const yy = y(p.strike);
       if(yy < PAD_T || yy > PAD_T+ph) return;
-      const isSel = selK != null && Math.abs(K - selK) < 1e-6;
-      cx.strokeStyle = isSel ? 'rgba(232,184,92,.75)' : 'rgba(255,255,255,.07)';
-      cx.setLineDash(isSel ? [] : [3,4]);
-      cx.lineWidth = isSel ? 1.4 : 1;
+      cx.strokeStyle = p.qty > 0 ? 'rgba(63,214,140,.5)' : 'rgba(255,91,103,.5)';
+      cx.setLineDash([3,4]); cx.lineWidth = 1;
       cx.beginPath(); cx.moveTo(PAD_L, yy); cx.lineTo(CW-PAD_R, yy); cx.stroke();
       cx.setLineDash([]);
-      if(isSel){
-        cx.fillStyle = '#E8B85C';
-        cx.font = '600 9px "IBM Plex Mono",monospace';
-        cx.fillText('K ' + K.toFixed(2), PAD_L+4, yy-7);
-        cx.font = '10px "IBM Plex Mono",monospace';
-      }
     });
+    if(selK != null){
+      const yy = y(selK);
+      cx.strokeStyle = 'rgba(232,184,92,.8)'; cx.lineWidth = 1.4;
+      cx.beginPath(); cx.moveTo(PAD_L, yy); cx.lineTo(CW-PAD_R, yy); cx.stroke();
+      cx.fillStyle = '#E8B85C'; cx.font = '600 9px "IBM Plex Mono",monospace';
+      cx.fillText(M.selected.moneyness + ' ' + selK.toFixed(2), PAD_L+4, yy-7);
+      cx.font = '10px "IBM Plex Mono",monospace';
+    }
 
-    // the tape bias leaks through as skill rises
-    const q = HS.clamp((cfg.skill - 12) / 88, 0, 1);
+    const q = Math.max(HS.readFloor(G), HS.clamp((cfg.skill - 12)/88, 0, 1));
     if(q > 0.12){
-      const d = S.regime.d;
-      const bull = d > 0.15, bear = d < -0.15;
+      const d = M.regime.d, bull = d > 0.15, bear = d < -0.15;
       if(bull || bear){
         const a = 0.03 + q*0.08;
         const g = cx.createLinearGradient(0, PAD_T, 0, PAD_T+ph);
@@ -443,10 +456,10 @@ HS.Market.run = function(opts, done){
         g.addColorStop(bull?1:0, 'rgba('+c+',0)');
         cx.fillStyle = g; cx.fillRect(PAD_L, PAD_T, pw, ph);
       }
-      if(q > 0.45){
-        cx.fillStyle = S.regime.d > 0.15 ? '#3FD68C' : S.regime.d < -0.15 ? '#FF5B67' : '#8993A5';
+      if(q > 0.45 || HS.alwaysRegime(G)){
+        cx.fillStyle = M.regime.d > 0.15 ? '#3FD68C' : M.regime.d < -0.15 ? '#FF5B67' : '#8993A5';
         cx.font = '600 10px "IBM Plex Mono",monospace';
-        cx.fillText('TAPE ' + S.regime.kind, PAD_L+4, PAD_T+9);
+        cx.fillText('TAPE ' + M.regime.kind, PAD_L+4, PAD_T+9);
       }
     }
 
@@ -462,160 +475,135 @@ HS.Market.run = function(opts, done){
     }
     cx.globalAlpha = 1;
 
-    const yp = y(S.price);
+    const yp = y(M.price);
     const lastUp = bars[bars.length-1].c >= bars[bars.length-1].o;
     cx.fillStyle = lastUp ? '#3FD68C' : '#FF5B67';
     cx.beginPath();
     cx.moveTo(CW-PAD_R, yp); cx.lineTo(CW-PAD_R+6, yp-7); cx.lineTo(CW-2, yp-7);
     cx.lineTo(CW-2, yp+7); cx.lineTo(CW-PAD_R+6, yp+7); cx.closePath(); cx.fill();
     cx.fillStyle = '#07090D'; cx.font = '700 10px "IBM Plex Mono",monospace';
-    cx.fillText(S.price.toFixed(S.tickSize < 0.05 ? 2 : 1), CW-PAD_R+9, yp);
+    cx.fillText(M.price.toFixed(M.tickSize < 0.05 ? 2 : 1), CW-PAD_R+9, yp);
   }
 
   /* ---------- hud ---------- */
   function sync(){
     const eq = equity();
-    const h = marketHour();
-    $('mkClock').textContent = HS.clockStr(h);
-    const left = 1 - prog();
-    $('mkClock').className = 'mk-clock' + (left < 0.12 ? ' crit' : '');
+    $('mkClock').textContent = HS.clockStr(marketHour());
+    $('mkClock').className = 'mk-clock' + (prog() > 0.88 ? ' crit' : '');
     $('mkBell').style.width = (prog()*100).toFixed(1) + '%';
-
     $('mkEquity').textContent = HS.moneyFull(eq);
-    $('mkEquity').style.color = eq >= cfg.capital ? 'var(--green)' : 'var(--red)';
-    const pl = eq - cfg.capital;
+    $('mkEquity').style.color = eq >= cfg.startEquity ? 'var(--green)' : 'var(--red)';
+    const pl = eq - cfg.startEquity;
     $('mkPnl').textContent = HS.signed(pl);
     $('mkPnl').style.color = pl >= 0 ? 'var(--green)' : 'var(--red)';
     $('mkTargetFill').style.width =
-      (HS.clamp((eq - cfg.capital)/(targetEquity - cfg.capital), 0, 1)*100).toFixed(1) + '%';
-    $('mkTargetVal').textContent = HS.money(targetEquity);
+      (HS.clamp(pl / (cfg.startEquity * cfg.target), 0, 1)*100).toFixed(1) + '%';
+    $('mkTargetVal').textContent = HS.money(cfg.startEquity * (1+cfg.target));
 
-    // selection / position readout
     const card = $('mkPos');
-    if(S.pos){
-      const q = markPos();
-      const long = S.pos.qty > 0;
-      card.className = 'mk-pos ' + (long ? 'long' : 'short');
-      $('mkPosName').textContent = (long ? '+' : '-') + Math.abs(S.pos.qty) + ' ' +
-                                   HS.contractName(S.pos.contract);
-      const op = openPnl();
-      const bits = ['entry ' + S.pos.entry.toFixed(2), 'mark ' + q.mid.toFixed(2)];
-      if(HS.showDelta(cfg.skill)) bits.push('Δ ' + (q.delta * S.pos.qty * CS).toFixed(0));
-      if(HS.showTheta(cfg.skill)) bits.push('Θ ' + HS.money(q.theta * S.pos.qty * CS));
-      if(HS.showIv(cfg.skill))    bits.push('IV ' + (q.iv*100).toFixed(0) + '%');
-      $('mkPosInfo').innerHTML = bits.join(' · ') +
-        ' <b style="color:' + (op>=0?'var(--green)':'var(--red)') + '">' + HS.signed(op) + '</b>';
-    } else if(S.selected){
-      const q = HS.quoteContract(S.selected, S.price, baseIv, prog());
+    if(M.selected){
+      const q = quoteOf(M.selected);
       card.className = 'mk-pos sel';
-      $('mkPosName').textContent = HS.contractName(S.selected);
-      const bits = ['bid ' + q.bid.toFixed(2), 'ask ' + q.ask.toFixed(2)];
-      if(HS.showDelta(cfg.skill)) bits.push('Δ ' + q.delta.toFixed(2));
-      if(HS.showTheta(cfg.skill)) bits.push('Θ ' + q.theta.toFixed(2) + '/day');
-      if(HS.showIv(cfg.skill))    bits.push('IV ' + (q.iv*100).toFixed(0) + '%');
-      $('mkPosInfo').innerHTML = bits.join(' · ') +
-        ' <span class="dim">· ' + HS.money(q.ask*CS*S.qty) + ' to buy ' + S.qty + '</span>';
+      $('mkPosName').textContent = M.selected.moneyness + ' ' +
+        (M.selected.isCall ? 'CALL' : 'PUT') + ' · ' + HS.posName(M.selected, G.day);
+      const bits = [M.selected.hint, 'ask ' + q.ask.toFixed(2)];
+      if(HS.showDelta(cfg.skill) || HS.alwaysGreeks(G)) bits.push('Δ ' + q.delta.toFixed(2));
+      if(HS.showTheta(cfg.skill) || HS.alwaysGreeks(G)) bits.push('Θ ' + q.theta.toFixed(2) + '/day');
+      if(HS.showIv(cfg.skill) || HS.alwaysIv(G)) bits.push('IV ' + (q.iv*100).toFixed(0) + '%');
+      bits.push(HS.money(q.ask*CS*M.qty) + ' for ' + M.qty);
+      $('mkPosInfo').textContent = bits.join(' · ');
     } else {
       card.className = 'mk-pos flat';
       $('mkPosName').textContent = 'NO CONTRACT SELECTED';
-      $('mkPosInfo').innerHTML = '<span class="dim">Tap a bid/ask in the chain to pick one.</span>';
+      $('mkPosInfo').textContent = 'Pick a call or a put from the chain.';
     }
-
-    $('mkBuy').disabled = !S.selected || !!S.pos;
-    $('mkSell').disabled = !S.selected || !!S.pos;
-    $('mkClose').disabled = !S.pos;
+    $('mkBuy').disabled = !M.selected;
+    $('mkSell').disabled = !M.selected;
     [...document.querySelectorAll('#mkQty .mk-size')].forEach(b =>
-      b.classList.toggle('sel', +b.dataset.qty === S.qty));
+      b.classList.toggle('sel', +b.dataset.qty === M.qty));
   }
 
   /* ---------- loop ---------- */
   function frame(now){
-    if(S.finished) return;
+    if(M.finished) return;
     requestAnimationFrame(frame);
-    const dt = Math.min(0.1, (now - S.last)/1000);
-    S.last = now;
-    if(!S.running) return;
-
+    const dt = Math.min(0.1, (now - M.last)/1000);
+    M.last = now;
+    if(!M.running) return;
     if(flashT > 0){ flashT -= dt; if(flashT <= 0) $('mkFlash').classList.remove('show'); }
 
-    S.acc += dt;
+    M.acc += dt;
     let guard = 0;
-    while(S.acc >= DT && guard++ < 12){
-      S.acc -= DT;
+    while(M.acc >= DT && guard++ < 12){
+      M.acc -= DT;
       step(false);
-      if(S.newsHide > 0){
-        S.newsHide -= DT;
-        if(S.newsHide <= 0) $('mkNews').classList.remove('show');
-      }
-      if(cfg.news){
-        S.nextNews -= DT;
-        if(S.nextNews <= 0) fireNews();
-      }
+      if(M.newsHide > 0){ M.newsHide -= DT; if(M.newsHide <= 0) $('mkNews').classList.remove('show'); }
+      if(cfg.news){ M.nextNews -= DT; if(M.nextNews <= 0) fireNews(); }
       const eq = equity();
-      if(eq > S.peak) S.peak = eq;
-      if(eq < S.trough) S.trough = eq;
-      if(eq <= bustEquity){ finish('bust'); return; }
-      if(S.tick >= TICKS){ finish('bell'); return; }
+      if(eq > M.peak) M.peak = eq;
+      if(eq < M.trough) M.trough = eq;
+      if(eq <= cfg.startEquity * HS.bustFloor(G)){ finish('bust'); return; }
+      if(M.tick >= TICKS){ finish('bell'); return; }
     }
-    buildChain(); updateChainPrices();
+    updateChain(); if(M.tab === 'book') renderBook();
     draw(); sync();
   }
 
   function finish(reason){
-    if(S.finished) return;
-    if(reason === 'bell') settle(); else closePos(true);
-    S.finished = true; S.running = false;
+    if(M.finished) return;
+    let settled = [];
+    if(reason === 'bust'){
+      G.positions.slice().forEach(p => closeById(p.id, true));
+    } else {
+      settled = settleAtBell();
+    }
+    M.finished = true; M.running = false;
     detach();
     root.classList.remove('show');
+    G.market.tickers[sym].price = M.price;
     const eq = equity();
     done({
-      pnl: eq - cfg.capital,
+      pnl: eq - cfg.startEquity,
       finalEquity: eq,
-      returnPct: (eq - cfg.capital) / cfg.capital,
-      hitTarget: eq >= targetEquity,
+      returnPct: (eq - cfg.startEquity) / Math.max(1, cfg.startEquity),
+      hitTarget: eq >= cfg.startEquity * (1 + cfg.target),
       busted: reason === 'bust',
-      trades: S.trades, wins: S.wins, bestStreak: S.bestStreak,
-      drawdown: (S.peak - S.trough) / cfg.capital
+      trades: M.trades, wins: M.wins, settled,
+      closePrice: M.price, symbol: sym
     });
   }
 
   /* ---------- controls ---------- */
-  const onBuy = () => S.running && openPos(1);
-  const onSell = () => S.running && openPos(-1);
-  const onClose = () => S.running && closePos(false);
-  const onQty = e => { S.qty = +e.currentTarget.dataset.qty; HS.Audio.click(); sync(); };
+  const onBuy = () => M.running && openPos(1);
+  const onSell = () => M.running && openPos(-1);
+  const onClose = () => { if(M.running && G.positions.length) closeById(G.positions[G.positions.length-1].id, false); };
+  const onQty = e => { M.qty = +e.currentTarget.dataset.qty; HS.Audio.click(); sync(); };
   function onKey(e){
-    if(!S.running) return;
+    if(!M.running) return;
     const k = e.key.toLowerCase();
     if(k === 'b'){ onBuy(); e.preventDefault(); }
     else if(k === 's'){ onSell(); e.preventDefault(); }
     else if(k === ' ' || k === 'f'){ onClose(); e.preventDefault(); }
     else if(k === 'tab'){
-      S.expIdx = (S.expIdx + 1) % expiries.length; S.selected = null;
-      renderTabs(); buildChain(); renderChain(); sync(); e.preventDefault();
+      M.expIdx = (M.expIdx + 1) % expiries.length; M.selected = null;
+      renderTabs(); renderChain(); sync(); e.preventDefault();
     }
-    else if(k >= '1' && k <= '7'){
-      const r = S.chain.strikes[+k - 1];
-      if(r) select(r.strike, !e.shiftKey);
-      e.preventDefault();
-    }
+    else if(k >= '1' && k <= '5'){ select(MONEY[+k-1], !e.shiftKey); e.preventDefault(); }
   }
   $('mkBuy').addEventListener('click', onBuy);
   $('mkSell').addEventListener('click', onSell);
-  $('mkClose').addEventListener('click', onClose);
   document.querySelectorAll('#mkQty .mk-size').forEach(b => b.addEventListener('click', onQty));
   window.addEventListener('keydown', onKey, true);
-
   function detach(){
     $('mkBuy').removeEventListener('click', onBuy);
     $('mkSell').removeEventListener('click', onSell);
-    $('mkClose').removeEventListener('click', onClose);
     document.querySelectorAll('#mkQty .mk-size').forEach(b => b.removeEventListener('click', onQty));
     window.removeEventListener('keydown', onKey, true);
     window.removeEventListener('resize', fit);
   }
 
-  /* ---------- open the bell ---------- */
+  /* ---------- opening bell ---------- */
+  M.peak = M.trough = cfg.startEquity;
   draw(); sync();
   let n = 3;
   $('mkCount').classList.add('show');
@@ -626,7 +614,7 @@ HS.Market.run = function(opts, done){
     n > 0 ? HS.Audio.click() : HS.Audio.enter();
     if(n < 0){
       $('mkCount').classList.remove('show');
-      S.running = true; S.last = performance.now();
+      M.running = true; M.last = performance.now();
       requestAnimationFrame(frame);
       return;
     }
@@ -636,5 +624,10 @@ HS.Market.run = function(opts, done){
 
   return { abort: () => finish('bell') };
 };
+
+/* What the desk lets you see, earned with skill. */
+HS.showDelta = s => s >= 22;
+HS.showTheta = s => s >= 42;
+HS.showIv    = s => s >= 62;
 
 })(window.HS);

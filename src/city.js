@@ -69,6 +69,8 @@ HS.buildCity = function(seed){
   const landmarks = [];
   const lampPosts = [];
   const trees = [];
+  const props = [];
+  const tanks = [];
 
   const lmByBlock = {};
   LANDMARKS.forEach(l => { lmByBlock[l.block[0] + ',' + l.block[1]] = l; });
@@ -107,6 +109,7 @@ HS.buildCity = function(seed){
           const maxH = HS.lerp(54, 18, HS.clamp(dist, 0, 1));
           const h = rnd.range(9, maxH) * (rnd.chance(0.10) ? 1.25 : 1);
           buildings.push({ x, z, w, d, h, color: rnd.pick(FILLER_COLORS), landmark:null });
+          if(h > 26 && rnd.chance(0.32)) tanks.push({ x, z, y:h + 0.32 });
           colliders.push({ x0:x-w/2, z0:z-d/2, x1:x+w/2, z1:z+d/2 });
           if(rnd.chance(0.3)) trees.push({ x: x + rnd.range(-w/2-3, w/2+3), z: z + d/2 + rnd.range(2,4) });
         });
@@ -114,6 +117,23 @@ HS.buildCity = function(seed){
 
       // street lamps on the block's road-side corners
       lampPosts.push({ x:r.x0 - ROAD/2 + 2.5, z:r.z0 - ROAD/2 + 2.5 });
+
+      // things you would actually trip over in this city
+      const edge = () => {
+        const side = rnd.int(0,3);
+        if(side === 0) return { x: rnd.range(r.x0, r.x1), z: r.z0 - 3.4, rot: 0 };
+        if(side === 1) return { x: rnd.range(r.x0, r.x1), z: r.z1 + 3.4, rot: Math.PI };
+        if(side === 2) return { x: r.x0 - 3.4, z: rnd.range(r.z0, r.z1), rot: Math.PI/2 };
+        return { x: r.x1 + 3.4, z: rnd.range(r.z0, r.z1), rot: -Math.PI/2 };
+      };
+      if(rnd.chance(0.30)) props.push(Object.assign({ kind:'cart' },   edge()));
+      if(rnd.chance(0.22)) props.push(Object.assign({ kind:'stand' },  edge()));
+      if(rnd.chance(0.26)) props.push(Object.assign({ kind:'subway' }, edge()));
+      if(rnd.chance(0.34)) props.push(Object.assign({ kind:'steam' },  edge()));
+      if(rnd.chance(0.45)) props.push(Object.assign({ kind:'hydrant' },edge()));
+      if(rnd.chance(0.40)) props.push(Object.assign({ kind:'trash' },  edge()));
+      if(rnd.chance(0.30)) props.push(Object.assign({ kind:'bench' },  edge()));
+      if(rnd.chance(0.18)) props.push(Object.assign({ kind:'scaffold' },edge()));
     }
   }
 
@@ -133,7 +153,7 @@ HS.buildCity = function(seed){
     });
   }
 
-  return { seed, buildings, colliders, landmarks, lampPosts, trees, skyline, size:SIZE, half:HALF };
+  return { seed, buildings, colliders, landmarks, lampPosts, trees, props, tanks, skyline, size:SIZE, half:HALF };
 };
 
 /* ------------------------------------------------------------------
@@ -351,6 +371,118 @@ HS.buildCityMeshes = function(THREE, city){
     group.add(trunks); group.add(leaves);
   }
 
+  /* --- street furniture --- */
+  if(city.props && city.props.length){
+    const mk = (geo, col, count) => new THREE.InstancedMesh(geo,
+      new THREE.MeshLambertMaterial({ color: col }), Math.max(1, count));
+    const by = k => city.props.filter(p => p.kind === k);
+    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(),
+          V = new THREE.Vector3(), SC = new THREE.Vector3(1,1,1),
+          AY = new THREE.Vector3(0,1,0);
+    const put = (mesh, i, p, y, sx, sy, sz) => {
+      Q.setFromAxisAngle(AY, p.rot || 0);
+      V.set(p.x, y, p.z);
+      SC.set(sx||1, sy||1, sz||1);
+      M.compose(V, Q, SC);
+      mesh.setMatrixAt(i, M);
+    };
+    const add = m => { m.instanceMatrix.needsUpdate = true; m.castShadow = true; group.add(m); return m; };
+
+    // hot dog carts: body, umbrella pole, canopy
+    const carts = by('cart');
+    if(carts.length){
+      const body = mk(new THREE.BoxGeometry(2.4,1.5,1.4), 0xC9CCD2, carts.length);
+      const pole = mk(new THREE.CylinderGeometry(0.08,0.08,2.6,5), 0x6A6A70, carts.length);
+      const can  = mk(new THREE.ConeGeometry(1.7,0.7,8), 0xC24A4A, carts.length);
+      carts.forEach((p,i)=>{ put(body,i,p,1.05); put(pole,i,p,2.0); put(can,i,p,3.3); });
+      add(body); add(pole); add(can);
+    }
+    // newsstands
+    const stands = by('stand');
+    if(stands.length){
+      const box = mk(new THREE.BoxGeometry(3.0,2.6,2.0), 0x2E4A6E, stands.length);
+      const top = mk(new THREE.BoxGeometry(3.4,0.25,2.4), 0xD8D2C4, stands.length);
+      stands.forEach((p,i)=>{ put(box,i,p,1.6); put(top,i,p,3.0); });
+      add(box); add(top);
+    }
+    // subway entrances: railings and a dark mouth
+    const subs = by('subway');
+    if(subs.length){
+      const rail = mk(new THREE.BoxGeometry(3.4,1.2,0.22), 0x3A6E4A, subs.length*2);
+      const mouth= mk(new THREE.BoxGeometry(3.2,0.3,2.6), 0x0A0C10, subs.length);
+      const glob = mk(new THREE.SphereGeometry(0.34,7,5), 0x7ED67E, subs.length);
+      subs.forEach((p,i)=>{
+        put(rail,i*2,p,1.0,1,1,1);
+        put(rail,i*2+1,{x:p.x+Math.cos(p.rot||0)*0,z:p.z+2.4,rot:p.rot},1.0,1,1,1);
+        put(mouth,i,p,0.5); put(glob,i,{x:p.x-1.9,z:p.z,rot:p.rot},1.9);
+      });
+      add(rail); add(mouth); add(glob);
+    }
+    // steam vents — the plume animates
+    const steams = by('steam');
+    if(steams.length){
+      const cone = mk(new THREE.CylinderGeometry(0.9,0.55,1.1,8), 0xC96A2A, steams.length);
+      steams.forEach((p,i)=>put(cone,i,p,0.85));
+      add(cone);
+      const plumeGeo = new THREE.CylinderGeometry(1.5,0.7,7,7,1,true);
+      const plumeMat = new THREE.MeshBasicMaterial({ color:0xD8DCE4, transparent:true,
+        opacity:0.10, depthWrite:false, side:THREE.DoubleSide });
+      const plume = new THREE.InstancedMesh(plumeGeo, plumeMat, steams.length);
+      steams.forEach((p,i)=>put(plume,i,p,4.4));
+      plume.instanceMatrix.needsUpdate = true;
+      group.add(plume);
+      group.userData.steam = { mesh:plume, mat:plumeMat };
+    }
+    const hyd = by('hydrant');
+    if(hyd.length){
+      const h1 = mk(new THREE.CylinderGeometry(0.28,0.34,1.0,6), 0xC24A4A, hyd.length);
+      hyd.forEach((p,i)=>put(h1,i,p,0.85)); add(h1);
+    }
+    const tr = by('trash');
+    if(tr.length){
+      const t1 = mk(new THREE.BoxGeometry(1.5,1.0,1.2), 0x23262C, tr.length*2);
+      tr.forEach((p,i)=>{ put(t1,i*2,p,0.85); put(t1,i*2+1,{x:p.x+1.3,z:p.z+0.4,rot:p.rot},0.75,0.8,0.8,0.8); });
+      add(t1);
+    }
+    const be = by('bench');
+    if(be.length){
+      const seat = mk(new THREE.BoxGeometry(2.8,0.22,0.9), 0x6A4A32, be.length);
+      const back = mk(new THREE.BoxGeometry(2.8,0.8,0.18), 0x6A4A32, be.length);
+      be.forEach((p,i)=>{ put(seat,i,p,0.85); put(back,i,{x:p.x,z:p.z-0.35,rot:p.rot},1.3); });
+      add(seat); add(back);
+    }
+    // sidewalk scaffolding — permanently, as in life
+    const sc = by('scaffold');
+    if(sc.length){
+      const deck = mk(new THREE.BoxGeometry(7.0,0.3,3.0), 0x8A7A5A, sc.length);
+      const leg  = mk(new THREE.BoxGeometry(0.28,4.2,0.28), 0x6A6256, sc.length*4);
+      sc.forEach((p,i)=>{
+        put(deck,i,p,4.3);
+        [[-3.2,-1.2],[3.2,-1.2],[-3.2,1.2],[3.2,1.2]].forEach((o,k)=>
+          put(leg,i*4+k,{x:p.x+o[0],z:p.z+o[1],rot:p.rot},2.1));
+      });
+      add(deck); add(leg);
+    }
+  }
+
+  /* --- rooftop water towers --- */
+  if(city.tanks && city.tanks.length){
+    const barrel = new THREE.InstancedMesh(
+      new THREE.CylinderGeometry(1.5,1.7,3.0,9),
+      new THREE.MeshLambertMaterial({ color:0x6A4A32 }), city.tanks.length);
+    const cap = new THREE.InstancedMesh(
+      new THREE.ConeGeometry(1.8,1.0,9),
+      new THREE.MeshLambertMaterial({ color:0x4A3626 }), city.tanks.length);
+    const m = new THREE.Matrix4();
+    city.tanks.forEach((t,i)=>{
+      m.makeTranslation(t.x, t.y + 2.6, t.z); barrel.setMatrixAt(i, m);
+      m.makeTranslation(t.x, t.y + 4.6, t.z); cap.setMatrixAt(i, m);
+    });
+    barrel.instanceMatrix.needsUpdate = cap.instanceMatrix.needsUpdate = true;
+    barrel.castShadow = cap.castShadow = true;
+    group.add(barrel); group.add(cap);
+  }
+
   group.userData.wallMat = wallMat;
   group.userData.tex = tex;
   return group;
@@ -374,7 +506,9 @@ HS.buildTraffic = function(THREE, city, seed){
       axis, dir, cross:c,
       t: rnd.range(-HALF, HALF),
       speed: rnd.range(13, 22),
-      color: rnd.pick([0xC24A4A, 0x3E6FB0, 0xD8D2C4, 0x2E2E33, 0xC9A227, 0x4A8A5E, 0x8A4AA8])
+      // roughly half the traffic is a cab
+      color: rnd.chance(0.5) ? 0xF2C10E
+           : rnd.pick([0xC24A4A, 0x3E6FB0, 0xD8D2C4, 0x2E2E33, 0x4A8A5E, 0x8A4AA8])
     });
   }
   for(let i = 0; i < PEDS; i++){
