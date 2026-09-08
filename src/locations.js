@@ -3,81 +3,100 @@ window.HS = window.HS || {};
 (function(HS){
 'use strict';
 
-/* Desk terms by rank: how much book you get, and what slice of the upside is yours. */
+/* Desk terms by rank. `vol` is per tick; over a session it implies roughly a
+   40%-80% annualised vol, which is what the options chain is priced off. */
 const DESK = [
-  { capital:0,       commission:0,    target:0.10, vol:0.0034, trend:0.90, chop:0.32 },
-  { capital:5000,    commission:0.08, target:0.10, vol:0.0034, trend:0.90, chop:0.32 },
-  { capital:25000,   commission:0.12, target:0.12, vol:0.0038, trend:0.86, chop:0.36 },
-  { capital:90000,   commission:0.16, target:0.14, vol:0.0044, trend:0.80, chop:0.40 },
-  { capital:260000,  commission:0.20, target:0.16, vol:0.0050, trend:0.72, chop:0.45 },
-  { capital:700000,  commission:0.25, target:0.18, vol:0.0056, trend:0.64, chop:0.49 },
-  { capital:1800000, commission:0.30, target:0.20, vol:0.0062, trend:0.58, chop:0.52 },
-  { capital:5000000, commission:0.35, target:0.22, vol:0.0068, trend:0.52, chop:0.55 },
-  { capital:12000000,commission:0.40, target:0.24, vol:0.0074, trend:0.48, chop:0.58 }
+  { capital:0,        commission:0,    target:0.08, vol:0.00090, trend:0.95, chop:0.30 },
+  { capital:8000,     commission:0.10, target:0.08, vol:0.00090, trend:0.95, chop:0.30 },
+  { capital:30000,    commission:0.14, target:0.10, vol:0.00105, trend:0.90, chop:0.34 },
+  { capital:100000,   commission:0.18, target:0.12, vol:0.00120, trend:0.84, chop:0.38 },
+  { capital:280000,   commission:0.22, target:0.14, vol:0.00135, trend:0.76, chop:0.43 },
+  { capital:750000,   commission:0.26, target:0.16, vol:0.00150, trend:0.68, chop:0.47 },
+  { capital:1900000,  commission:0.30, target:0.18, vol:0.00162, trend:0.60, chop:0.50 },
+  { capital:5200000,  commission:0.35, target:0.20, vol:0.00172, trend:0.54, chop:0.53 },
+  { capital:13000000, commission:0.40, target:0.22, vol:0.00182, trend:0.48, chop:0.56 }
 ];
 HS.DESK = DESK;
 
 const SYMS = ['VLT','NRG','QNT','BTX','ARC','HLX'];
+
+/* Energy prices. Deliberately small — a day should hold several of these. */
+const E = {
+  work:14, prop:16, fund:16, review:8, gym:12,
+  classA:8, classB:12, classC:18,
+  network:8, round:6, favour:4, tip:6, raise:12
+};
+HS.ENERGY = E;
 
 HS.Locations = function(game){
   const L = {};
   const S = () => game.S;
   const ui = () => game.ui;
 
-  /* ---------- shared helpers ---------- */
-  function need(cond, why){ return cond ? null : why; }
   function stat(k, v, tone){
     return '<div class="stat"><span class="k">' + k + '</span><span class="v ' + (tone||'') + '">' + v + '</span></div>';
   }
   function para(t){ return '<p class="pbody">' + t + '</p>'; }
+  const deskFor = r => DESK[HS.clamp(r, 0, DESK.length - 1)];
 
-  function deskFor(rank){ return DESK[HS.clamp(rank, 0, DESK.length - 1)]; }
+  /* How much of the trading day is left if you start now. */
+  function sessionShape(s){
+    const start = Math.max(s.hour, HS.MARKET_OPEN);
+    const frac = HS.clamp((HS.MARKET_CLOSE - start) / (HS.MARKET_CLOSE - HS.MARKET_OPEN), 0, 1);
+    return { start, frac, duration: Math.round(78 * HS.clamp(frac, 0.3, 1)) };
+  }
+  function marketOpenNow(s){
+    return !HS.isWeekend(s.day) && s.hour < HS.MARKET_CLOSE - 0.4;
+  }
+  function marketWhy(s){
+    if(HS.isWeekend(s.day)) return 'The market is shut — it is the weekend';
+    if(s.hour >= HS.MARKET_CLOSE - 0.4) return 'The bell has rung. Come back tomorrow';
+    return null;
+  }
 
-  /* Run a trading session and apply its consequences. */
+  /* Run a session and hand the result back to the game. */
   function runSession(o){
     const s = S();
     const d = deskFor(s.rank);
-    const sym = SYMS[Math.floor(Math.random() * (o.symbolPool || 2 + Math.min(4, s.rank)))] || 'VLT';
+    const shape = sessionShape(s);
+    const sym = SYMS[Math.floor(Math.random() * Math.min(SYMS.length, 2 + s.rank))];
     ui().closePanel();
     game.setPaused(true);
 
     HS.Market.run({
       symbol: sym,
       capital: o.capital,
-      leverage: o.leverage || 1,
-      fee: o.fee != null ? o.fee : 0.0006,
-      vol: d.vol, trendStr: d.trend, chop: d.chop,
-      duration: o.duration || 45,
+      duration: shape.duration,
       target: o.target != null ? o.target : d.target,
-      skill: s.skill,
-      tip: !!o.tip,
-      news: s.rank >= 2 ? [9, 16] : null,
-      shock: 0.03 + s.rank * 0.004,
+      vol: d.vol, trendStr: d.trend, chop: d.chop,
+      skill: s.skill, rank: s.rank,
+      edge: s.edge && s.edge.day === s.day ? s.edge : null,
+      feePerContract: o.fee != null ? o.fee : 0.65,
+      news: s.rank >= 2 ? [18, 34] : null,
+      shock: 0.018 + s.rank * 0.003,
       title: o.title, sub: o.sub
     }, res => {
       game.setPaused(false);
-      o.onDone(res, d);
+      s.edge = null;                       // the read is spent
+      o.onDone(res, d, shape);
     });
   }
 
-  /* ---------------------------------------------------------------
-     HOME
-     --------------------------------------------------------------- */
+  /* ------------------------------- HOME ------------------------------- */
   function homePanel(){
     const s = S();
     const h = HS.HOUSING[s.housing];
-    const canSleep = true;
+    const wake = Math.round(h.sleepPct * s.maxEnergy);
     const body =
       para(h.desc) +
       '<div class="stats-grid">' +
         stat('Net worth', HS.money(HS.netWorth(s))) +
         stat('Weekly rent', h.rent ? HS.money(h.rent) : 'free') +
-        stat('Rest quality', h.sleepEnergy + '%') +
+        stat('Wake with', wake + ' energy') +
         stat('Rent due', 'Day ' + s.rentDueDay) +
       '</div>';
-
     const actions = [
-      { label:'Sleep until morning', detail:'Wake at 7:00 with ' + h.sleepEnergy + '% energy',
+      { label:'Sleep until morning', detail:'Wake at 7:00 with ' + wake + ' energy',
         cost:'ends the day',
         onClick: () => { ui().closePanel(); game.sleep(); } },
       { label:'Save game', detail:'Write your progress to this browser',
@@ -91,28 +110,24 @@ HS.Locations = function(game){
   }
   L.home_basement = L.home_studio = L.home_loft = L.home_penthouse = homePanel;
 
-  /* ---------------------------------------------------------------
-     BROKERAGE — the day job
-     --------------------------------------------------------------- */
+  /* ---------------------------- BROKERAGE ----------------------------- */
   L.brokerage = function(){
     const s = S();
     const d = deskFor(s.rank);
-    const isOpen = s.hour >= 8 && s.hour < 18 && !HS.isWeekend(s.day);
     const nr = HS.nextRank(s);
 
     if(s.rank === 0){
       return {
         title:'Ladder & Co. Brokerage', sub:'GROUND FLOOR', accent:'#3ECFCF',
-        body: para('A wall of phones, a wall of noise. A man in a bad tie looks you up and down and asks if you can take rejection for nine hours a day.') +
-              para('<b>You can.</b>'),
+        body: para('A wall of phones, a wall of noise. A man in a bad tie looks you up and down and asks if you can take rejection for nine hours a day.') + para('<b>You can.</b>'),
         actions:[{ label:'Ask for a job', detail:'Start at the bottom: cold calling',
-          onClick: () => {
-            ui().closePanel();
-            game.promoteTo(1, 'They hand you a headset and a list of names. You are a Cold Caller.');
-          }}]
+          onClick: () => { ui().closePanel();
+            game.promoteTo(1, 'They hand you a headset and a list of names. You are a Cold Caller.'); }}]
       };
     }
 
+    const shape = sessionShape(s);
+    const why = marketWhy(s);
     const body =
       para('The floor hums. Your desk is ' + (s.rank >= 4 ? 'by the window' : 'near the printer') + '.') +
       '<div class="stats-grid">' +
@@ -120,17 +135,19 @@ HS.Locations = function(game){
         stat('Your cut', Math.round(d.commission*100) + '% of profit') +
         stat('Day rate', HS.money(HS.rankOf(s).salary)) +
         stat('Session target', HS.pct(d.target)) +
+        stat('Market', why ? 'closed' : HS.clockStr(Math.max(s.hour, HS.MARKET_OPEN)) + ' – 4:00 PM',
+             why ? 'bad' : 'good') +
+        stat('Day left', Math.round(shape.frac*100) + '%', shape.frac < 0.5 ? 'bad' : '') +
       '</div>' +
       para('<span class="dim">The firm\'s capital, the firm\'s risk. Lose money here and it costs you standing, not savings.</span>');
 
     const actions = [];
     actions.push({
-      label:'Work a session', detail:'Trade the firm\'s book for your commission',
-      cost:'2h · 22 energy',
-      disabled: !isOpen || s.workedToday || s.energy < 22,
-      why: !isOpen ? (HS.isWeekend(s.day) ? 'Closed — it is the weekend' : 'Open 8:00 to 18:00')
-           : s.workedToday ? 'You have already worked today'
-           : 'Not enough energy',
+      label: shape.frac > 0.85 ? 'Trade the open' : 'Trade what is left of the day',
+      detail:'Options on the firm\'s book, for your commission',
+      cost:'to the bell · ' + E.work + ' energy',
+      disabled: !!why || s.workedToday || s.energy < E.work,
+      why: why || (s.workedToday ? 'You have already traded today' : 'Not enough energy'),
       onClick: () => runSession({
         capital: d.capital,
         title: 'LADDER & CO. — ' + HS.rankOf(S()).name.toUpperCase(),
@@ -139,12 +156,21 @@ HS.Locations = function(game){
       })
     });
 
+    if(s.rank >= 2){
+      actions.push({
+        label:'Chart review', detail:'Sit with the daily charts and look for a crossover',
+        cost:'1h · ' + E.review + ' energy',
+        disabled: s.reviewedToday || s.energy < E.review,
+        why: s.reviewedToday ? 'You have already done today\'s review' : 'Not enough energy',
+        onClick: () => { ui().closePanel(); game.chartReview(); }
+      });
+    }
+
     if(nr){
       const needs = HS.needText(s, nr.need);
-      const ok = HS.meetsNeed(s, nr.need);
       actions.push({
         label:'Ask for a promotion', detail:'Next: ' + nr.name,
-        disabled: !ok,
+        disabled: !HS.meetsNeed(s, nr.need),
         why: needs.filter(n => !n.ok).map(n => n.label + ' ' + n.text).join(' · '),
         onClick: () => { ui().closePanel(); game.promoteTo(nr.i); }
       });
@@ -161,13 +187,10 @@ HS.Locations = function(game){
     return { title:'Ladder & Co. Brokerage', sub:'YOUR EMPLOYER', accent:'#3ECFCF', body, actions };
   };
 
-  /* ---------------------------------------------------------------
-     THE EXCHANGE — your own risk, and the branch point
-     --------------------------------------------------------------- */
+  /* ----------------------------- EXCHANGE ----------------------------- */
   L.exchange = function(){
     const s = S();
-    const locked = s.rank < 3;
-    if(locked){
+    if(s.rank < 3){
       return {
         title:'The Exchange', sub:'MEMBERS ONLY', accent:'#8B6BFF',
         body: para('Two guards, a brass door, and a members\' board you are not on. The floor beyond is where the real size trades.') +
@@ -175,51 +198,99 @@ HS.Locations = function(game){
         actions:[]
       };
     }
-
-    const d = deskFor(s.rank);
+    const why = marketWhy(s);
     const stake = Math.max(2000, Math.floor(s.cash * 0.5));
     const body =
-      para('Open outcry, ten thousand voices. Down here you can put up your own money and keep every cent you make on it.') +
+      para('Open outcry, ten thousand voices. Down here you put up your own money and keep every cent you make on it.') +
       '<div class="stats-grid">' +
         stat('Your stake', HS.money(stake)) +
-        stat('Leverage', (1 + Math.min(3, Math.floor(s.rank/2))) + 'x') +
         stat('You keep', '100%') +
         stat('Your money', 'at risk', 'bad') +
+        stat('Market', why ? 'closed' : 'open', why ? 'bad' : 'good') +
       '</div>';
 
-    const actions = [];
-    actions.push({
-      label:'Trade your own book', detail:'Half your cash, all of the upside — and the downside',
-      cost:'2h · 26 energy',
-      disabled: s.cash < 4000 || s.energy < 26,
-      why: s.cash < 4000 ? 'You need at least $4,000 to take a seat' : 'Not enough energy',
+    const actions = [{
+      label:'Trade your own book', detail:'Half your cash on the options chain',
+      cost:'to the bell · ' + E.prop + ' energy',
+      disabled: !!why || s.cash < 4000 || s.energy < E.prop,
+      why: why || (s.cash < 4000 ? 'You need at least $4,000 to take a seat' : 'Not enough energy'),
       onClick: () => runSession({
-        capital: stake,
-        leverage: 1 + Math.min(3, Math.floor(s.rank/2)),
-        fee: 0.0009,
-        tip: S().tips > 0,
-        title:'THE EXCHANGE — PROP SESSION',
-        sub: S().tips > 0 ? 'Your capital · running on a tip' : 'Your capital, your risk, your profit',
+        capital: stake, fee: 0.85,
+        title:'THE EXCHANGE — YOUR BOOK',
+        sub:'Your capital, your risk, your profit',
         onDone: res => game.finishPropSession(res, stake)
       })
-    });
+    }];
 
     if(s.rank === 5 && !s.path){
-      const ok = HS.meetsNeed(s, { skill:70, rep:65, cash:400000 });
-      const needs = HS.needText(s, { skill:70, rep:65, cash:400000 });
+      const req = { skill:70, rep:65, cash:400000 };
       actions.push({
         label:'Make your move', detail:'Choose what you become', tone:'gold',
-        disabled: !ok,
-        why: needs.filter(n=>!n.ok).map(n=>n.label+' '+n.text).join(' · '),
+        disabled: !HS.meetsNeed(s, req),
+        why: HS.needText(s, req).filter(n=>!n.ok).map(n=>n.label+' '+n.text).join(' · '),
         onClick: () => { ui().closePanel(); game.offerBranch(); }
       });
     }
     return { title:'The Exchange', sub:'THE FLOOR', accent:'#8B6BFF', body, actions };
   };
 
-  /* ---------------------------------------------------------------
-     BANK
-     --------------------------------------------------------------- */
+  /* ------------------------------- GYM -------------------------------- */
+  L.gym = function(){
+    const s = S();
+    const isOpen = s.hour >= 6 && s.hour < 22;
+    const atCap = s.maxEnergy >= HS.MAX_ENERGY_CAP;
+    const cost = Math.round(40 + (s.maxEnergy - 100) * 14);
+    const body =
+      para('Rubber, chalk and a man at the desk who has never once asked what you do for a living.') +
+      '<div class="stats-grid">' +
+        stat('Stamina', Math.round(s.maxEnergy) + ' / ' + HS.MAX_ENERGY_CAP) +
+        stat('Energy now', Math.round(s.energy)) +
+        stat('Hours', '06:00 – 22:00') +
+      '</div>' +
+      para('<span class="dim">Training raises the ceiling, not the tank. Every session adds permanent capacity — which is how you fit more into a day.</span>');
+
+    return {
+      title:'Ironside Gym', sub:'STAMINA', accent:'#6BD4C0', body,
+      actions:[{
+        label:'Train', detail:'+4 permanent stamina',
+        cost: HS.money(cost) + ' · 1.5h · ' + E.gym + ' energy',
+        disabled: !isOpen || atCap || s.cash < cost || s.energy < E.gym || s.gymToday,
+        why: !isOpen ? 'The gym is shut' : atCap ? 'You are as fit as this city gets'
+             : s.gymToday ? 'You have already trained today'
+             : s.cash < cost ? 'You cannot cover the day pass' : 'Not enough energy',
+        onClick: () => { ui().closePanel(); game.trainGym(cost); }
+      }]
+    };
+  };
+
+  /* ------------------------------ STORE ------------------------------- */
+  L.store = function(){
+    const s = S();
+    const room = Math.max(0, s.maxEnergy - s.energy);
+    const body =
+      para('Strip light, a humming cooler, and a clerk who has seen every kind of man buy his third can of the day.') +
+      '<div class="stats-grid">' +
+        stat('Energy', Math.round(s.energy) + ' / ' + Math.round(s.maxEnergy)) +
+        stat('Bought today', s.drinksToday) +
+        stat('Room left', Math.round(room)) +
+      '</div>' +
+      para('<span class="dim">The price climbs steeply with the size of the can — and with every one you have already had today.</span>');
+
+    const actions = HS.DRINKS.map(dk => {
+      const gain = Math.min(dk.energy, room);
+      const price = HS.drinkPrice(s, dk.energy);
+      return {
+        label: dk.name, detail:'+' + dk.energy + ' energy' + (gain < dk.energy ? ' (only ' + Math.round(gain) + ' fits)' : ''),
+        cost: HS.money(price) + ' · 15 min',
+        disabled: s.cash < price || room < 1,
+        why: room < 1 ? 'You are already full' : 'You cannot afford it',
+        onClick: () => { ui().closePanel(); game.buyDrink(dk, price); }
+      };
+    });
+    return { title:'Kwik Corner', sub:'24 HOURS', accent:'#F0E06A', body, actions };
+  };
+
+  /* ------------------------------- BANK ------------------------------- */
   L.bank = function(){
     const s = S();
     const maxLoan = Math.floor((5000 + s.rep * 900 + s.rank * 26000) * (1 + s.skill/120));
@@ -241,8 +312,7 @@ HS.Locations = function(game){
       actions.push({
         label:'Borrow ' + HS.money(amt), detail:'Added to your loan balance',
         onClick: () => {
-          s.cash += amt; s.loan += amt;
-          HS.Audio.cash();
+          s.cash += amt; s.loan += amt; HS.Audio.cash();
           ui().toast('Borrowed ' + HS.money(amt) + '.', '');
           game.openPanelFor('bank');
         }
@@ -252,11 +322,9 @@ HS.Locations = function(game){
       const pay = Math.min(s.cash, s.loan);
       actions.push({
         label:'Repay ' + HS.money(pay), detail:'Clear what you can today',
-        disabled: pay < 1,
-        why:'You have nothing to repay with',
+        disabled: pay < 1, why:'You have nothing to repay with',
         onClick: () => {
-          s.cash -= pay; s.loan -= pay;
-          HS.Audio.cash();
+          s.cash -= pay; s.loan -= pay; HS.Audio.cash();
           ui().toast('Repaid ' + HS.money(pay) + '.', 'good');
           game.openPanelFor('bank');
         }
@@ -265,9 +333,7 @@ HS.Locations = function(game){
     return { title:'First Federal Bank', sub:'CREDIT', accent:'#46C98A', body, actions };
   };
 
-  /* ---------------------------------------------------------------
-     THE TICKER BAR — reputation and contacts
-     --------------------------------------------------------------- */
+  /* -------------------------------- BAR ------------------------------- */
   L.bar = function(){
     const s = S();
     const isOpen = s.hour >= 17 || s.hour < 3;
@@ -284,8 +350,8 @@ HS.Locations = function(game){
     const netCost = 120 + s.rank * 260;
     actions.push({
       label:'Work the room', detail:'Shake hands, remember names, buy the odd drink',
-      cost: HS.money(netCost) + ' · 2h · 16 energy',
-      disabled: !isOpen || s.cash < netCost || s.energy < 16 || s.networkedToday,
+      cost: HS.money(netCost) + ' · 2h · ' + E.network + ' energy',
+      disabled: !isOpen || s.cash < netCost || s.energy < E.network || s.networkedToday,
       why: !isOpen ? 'The bar is shut' : s.networkedToday ? 'You have worked this room today'
            : s.cash < netCost ? 'You cannot cover the tab' : 'Not enough energy',
       onClick: () => { ui().closePanel(); game.network(netCost); }
@@ -293,48 +359,44 @@ HS.Locations = function(game){
     const roundCost = 1200 + s.rank * 3400;
     actions.push({
       label:'Buy the whole floor a round', detail:'Loud, expensive, extremely effective',
-      cost: HS.money(roundCost) + ' · 2h · 12 energy',
-      disabled: !isOpen || s.cash < roundCost || s.energy < 12,
+      cost: HS.money(roundCost) + ' · 2h · ' + E.round + ' energy',
+      disabled: !isOpen || s.cash < roundCost || s.energy < E.round,
       why: !isOpen ? 'The bar is shut' : 'You cannot cover that tab',
       onClick: () => { ui().closePanel(); game.buyRound(roundCost); }
     });
     if(s.contacts > 0){
       actions.push({
-        label:'Call in a favour', detail:'A contact tells you what they are seeing — no questions, no heat',
-        cost:'1h · 6 energy · 1 contact',
-        disabled: !isOpen || s.energy < 6,
-        why:'The bar is shut',
+        label:'Call in a favour', detail:'A contact tells you what they are seeing — no heat',
+        cost:'1h · ' + E.favour + ' energy · 1 contact',
+        disabled: !isOpen || s.energy < E.favour, why:'The bar is shut',
         onClick: () => { ui().closePanel(); game.callFavour(); }
       });
     }
     if(s.path === 'villain' || s.rank >= 5){
       actions.push({
         label:'Meet a man about a number', detail:'Someone who sees order flow before it prints',
-        cost:'2h · 10 energy · heat',
-        tone:'red',
-        disabled: !isOpen || s.energy < 10,
-        why:'The bar is shut',
+        cost:'2h · ' + E.tip + ' energy · heat', tone:'red',
+        disabled: !isOpen || s.energy < E.tip, why:'The bar is shut',
         onClick: () => { ui().closePanel(); game.buyTip(); }
       });
     }
     return { title:'The Ticker Bar', sub:'AFTER HOURS', accent:'#FF5B67', body, actions };
   };
 
-  /* ---------------------------------------------------------------
-     NIGHT SCHOOL — skill
-     --------------------------------------------------------------- */
+  /* ------------------------------ SCHOOL ------------------------------ */
   L.school = function(){
     const s = S();
     const isOpen = s.hour >= 16 && s.hour < 23;
     const courses = [
-      { name:'Evening seminar',   skill:2.5, cash:180,   energy:14, hours:2, min:0  },
-      { name:'Certification',     skill:5.5, cash:2200,  energy:22, hours:3, min:25 },
-      { name:'Quant masterclass', skill:9.0, cash:18000, energy:30, hours:4, min:50 }
+      { name:'Evening seminar',   skill:2.5, cash:180,   energy:E.classA, hours:2, min:0  },
+      { name:'Certification',     skill:5.5, cash:2200,  energy:E.classB, hours:3, min:25 },
+      { name:'Quant masterclass', skill:9.0, cash:18000, energy:E.classC, hours:4, min:50 }
     ];
     const body =
       para('Strip lights, plastic chairs, and the only people in this city who will explain anything to you honestly.') +
       '<div class="stats-grid">' +
         stat('Skill', Math.round(s.skill) + ' / 100') +
+        stat('Next unlock', nextSkillUnlock(s)) +
         stat('Hours', '16:00 – 23:00') +
       '</div>';
     const actions = courses.map(c => ({
@@ -349,9 +411,14 @@ HS.Locations = function(game){
     return { title:'Vance Night School', sub:'LEARN', accent:'#9BD46B', body, actions };
   };
 
-  /* ---------------------------------------------------------------
-     REALTOR — housing
-     --------------------------------------------------------------- */
+  function nextSkillUnlock(s){
+    if(s.skill < 25) return 'Δ at 25';
+    if(s.skill < 45) return 'Θ at 45';
+    if(s.skill < 65) return 'IV at 65';
+    return 'all unlocked';
+  }
+
+  /* ----------------------------- REALTOR ------------------------------ */
   L.realtor = function(){
     const s = S();
     const next = HS.HOUSING[s.housing + 1];
@@ -361,24 +428,22 @@ HS.Locations = function(game){
         stat('Living in', HS.HOUSING[s.housing].name) +
         stat('Weekly rent', HS.HOUSING[s.housing].rent ? HS.money(HS.HOUSING[s.housing].rent) : 'free') +
       '</div>' +
-      (next ? para('<b>' + next.name + '</b> — ' + next.desc) : para('<span class="dim">There is nothing above the penthouse.</span>'));
-
+      (next ? para('<b>' + next.name + '</b> — ' + next.desc)
+            : para('<span class="dim">There is nothing above the penthouse.</span>'));
     const actions = [];
     if(next){
       actions.push({
-        label:'Take ' + next.name, detail:'Rest to ' + next.sleepEnergy + '% · rent ' + HS.money(next.rent) + '/week',
+        label:'Take ' + next.name,
+        detail:'Wake with ' + Math.round(next.sleepPct*100) + '% of your stamina · rent ' + HS.money(next.rent) + '/week',
         cost: HS.money(next.price),
-        disabled: s.cash < next.price,
-        why:'You cannot cover the deposit',
+        disabled: s.cash < next.price, why:'You cannot cover the deposit',
         onClick: () => { ui().closePanel(); game.moveHouse(); }
       });
     }
     return { title:'Kestrel Realty', sub:'PROPERTY', accent:'#E0A6FF', body, actions };
   };
 
-  /* ---------------------------------------------------------------
-     SEC — consequences
-     --------------------------------------------------------------- */
+  /* -------------------------------- SEC ------------------------------- */
   L.sec = function(){
     const s = S();
     const body =
@@ -389,30 +454,26 @@ HS.Locations = function(game){
              s.heat >= 45 ? 'bad' : 'good') +
       '</div>' +
       para('<span class="dim">Heat rises when you trade on things you should not know. At 100 they stop asking politely.</span>');
-
     const actions = [];
     if(s.heat >= 10){
       const fee = Math.max(5000, Math.floor(s.cash * 0.12));
       actions.push({
         label:'Retain a serious lawyer', detail:'Heat down 25 · reputation untouched',
-        cost: HS.money(fee),
-        disabled: s.cash < fee, why:'You cannot afford that retainer',
+        cost: HS.money(fee), disabled: s.cash < fee, why:'You cannot afford that retainer',
         onClick: () => { ui().closePanel(); game.lawyerUp(fee); }
       });
       actions.push({
-        label:'Cooperate fully', detail:'Heat down 45 · reputation down 12',
-        cost:'3h',
+        label:'Cooperate fully', detail:'Heat down 45 · reputation down 12', cost:'3h',
         onClick: () => { ui().closePanel(); game.cooperate(); }
       });
     } else {
-      actions.push({ label:'Nothing to discuss', detail:'They have no file on you', disabled:true, why:'Come back when you are interesting' });
+      actions.push({ label:'Nothing to discuss', detail:'They have no file on you',
+        disabled:true, why:'Come back when you are interesting' });
     }
     return { title:'SEC Field Office', sub:'ENFORCEMENT', accent:'#FF8A3C', body, actions };
   };
 
-  /* ---------------------------------------------------------------
-     YOUR FIRM — path-specific endgame
-     --------------------------------------------------------------- */
+  /* ------------------------------- FIRM ------------------------------- */
   L.firm = function(){
     const s = S();
     if(!s.path) return { title:'Empty Lot', sub:'', accent:'#E8B85C', body:para('Nothing here yet.'), actions:[] };
@@ -420,6 +481,16 @@ HS.Locations = function(game){
     if(s.path === 'villain') return firmVillain();
     return firmLegend();
   };
+
+  function reviewAction(s){
+    return {
+      label:'Chart review', detail:'Look for a crossover before the open',
+      cost:'1h · ' + E.review + ' energy',
+      disabled: s.reviewedToday || s.energy < E.review,
+      why: s.reviewedToday ? 'Already done today' : 'Not enough energy',
+      onClick: () => { ui().closePanel(); game.chartReview(); }
+    };
+  }
 
   function firmBoss(){
     const s = S();
@@ -433,15 +504,12 @@ HS.Locations = function(game){
         stat('Avg morale', s.brokers.length ? Math.round(s.brokers.reduce((a,b)=>a+b.morale,0)/s.brokers.length) : '—') +
       '</div>' +
       para('<span class="dim">Your brokers trade overnight. You take 45% of what they clear, and you pay them either way.</span>');
-
     const hireCost = 12000 + s.brokers.length * 9000;
     const actions = [{
-      label:'Hire a broker', detail:'One more seat on the floor',
-      cost: HS.money(hireCost),
-      disabled: s.cash < hireCost,
-      why:'You cannot cover the signing cost',
+      label:'Hire a broker', detail:'One more seat on the floor', cost: HS.money(hireCost),
+      disabled: s.cash < hireCost, why:'You cannot cover the signing cost',
       onClick: () => { ui().closePanel(); game.hireBroker(hireCost); }
-    }];
+    }, reviewAction(s)];
     if(s.brokers.length){
       const trainCost = 6000 * s.brokers.length;
       actions.push({
@@ -451,8 +519,7 @@ HS.Locations = function(game){
         onClick: () => { ui().closePanel(); game.trainFloor(trainCost); }
       });
       actions.push({
-        label:'Squeeze the floor', detail:'Double tomorrow\'s take · morale down hard',
-        tone:'red',
+        label:'Squeeze the floor', detail:'Double tomorrow\'s take · morale down hard', tone:'red',
         onClick: () => { ui().closePanel(); game.squeezeFloor(); }
       });
     }
@@ -461,6 +528,7 @@ HS.Locations = function(game){
 
   function firmVillain(){
     const s = S();
+    const why = marketWhy(s);
     const body =
       para('Glass, silence, and one Bloomberg per analyst. Nobody here says the word "client".') +
       '<div class="stats-grid">' +
@@ -470,40 +538,36 @@ HS.Locations = function(game){
         stat('Heat', Math.round(s.heat) + ' / 100', s.heat >= 60 ? 'bad' : '') +
       '</div>' +
       para('<span class="dim">The fund compounds overnight. Big months attract money — and the wrong kind of attention.</span>');
-
     const raise = Math.max(500000, Math.floor(s.aum * 0.5));
     const actions = [{
       label:'Raise capital', detail:'Bring in ' + HS.money(raise) + ' of other people\'s money',
-      cost:'3h · 20 energy · needs reputation',
-      disabled: s.energy < 20 || s.rep < 40,
+      cost:'3h · ' + E.raise + ' energy',
+      disabled: s.energy < E.raise || s.rep < 40,
       why: s.rep < 40 ? 'Nobody writes a cheque to a nobody' : 'Not enough energy',
       onClick: () => { ui().closePanel(); game.raiseCapital(raise); }
-    }];
-    actions.push({
+    }, {
       label:'Trade the fund', detail:'Put the book to work yourself',
-      cost:'2h · 26 energy',
-      disabled: s.aum < 100000 || s.energy < 26,
-      why: s.aum < 100000 ? 'Raise capital first' : 'Not enough energy',
+      cost:'to the bell · ' + E.fund + ' energy',
+      disabled: !!why || s.aum < 100000 || s.energy < E.fund,
+      why: why || (s.aum < 100000 ? 'Raise capital first' : 'Not enough energy'),
       onClick: () => runSession({
-        capital: Math.floor(S().aum * 0.3),
-        leverage: 3, fee:0.0008,
-        tip: S().tips > 0,
+        capital: Math.floor(S().aum * 0.3), fee: 0.5,
         title:'FUND BOOK — DEPLOY',
-        sub: S().tips > 0 ? 'Running on a tip · the tape is transparent to you' : 'Thirty percent of the fund',
+        sub:'Thirty percent of the fund, on the chain',
         onDone: res => game.finishFundSession(res)
       })
-    });
-    actions.push({
+    }, reviewAction(s), {
       label:'Front-run the flow', detail:'Trade ahead of your own clients',
       cost:'heat +18', tone:'red',
       onClick: () => { ui().closePanel(); game.frontRun(); }
-    });
+    }];
     return { title:'Your Fund', sub:'THE VILLAIN', accent:'#FF5B67', body, actions };
   }
 
   function firmLegend(){
     const s = S();
     const d = deskFor(s.rank);
+    const why = marketWhy(s);
     const body =
       para('Your own office at the top of the street. No floor to run, no investors to lie to — just you and the tape.') +
       '<div class="stats-grid">' +
@@ -517,16 +581,15 @@ HS.Locations = function(game){
       title:'Your Office', sub:'THE LEGEND', accent:'#E8B85C', body,
       actions:[{
         label:'Trade the day', detail:'Your own capital, no leash',
-        cost:'3h · 28 energy',
-        disabled: s.energy < 28 || s.cash < 20000,
-        why: s.cash < 20000 ? 'You need real capital to work with' : 'Not enough energy',
+        cost:'to the bell · ' + E.prop + ' energy',
+        disabled: !!why || s.energy < E.prop || s.cash < 20000,
+        why: why || (s.cash < 20000 ? 'You need real capital to work with' : 'Not enough energy'),
         onClick: () => runSession({
-          capital: stake, leverage:2, fee:0.0005,
-          tip: S().tips > 0,
+          capital: stake, fee: 0.4,
           title:'YOUR BOOK', sub:'No commission, no excuses',
           onDone: res => game.finishPropSession(res, stake, true)
         })
-      }]
+      }, reviewAction(s)]
     };
   }
 

@@ -57,6 +57,7 @@ HS.Game = function(){
       HS.save(G.S); ui.toast('Saved.', 'good'); closeMenu();
     });
     $('btnHelp').addEventListener('click', () => { $('help').classList.add('show'); });
+    $('btnCareer').addEventListener('click', () => { HS.Audio.click(); showCareer(); });
     $('helpClose').addEventListener('click', () => { $('help').classList.remove('show'); });
     $('interactBtn').addEventListener('click', () => tryEnter());
   }
@@ -108,6 +109,7 @@ HS.Game = function(){
     if(id.startsWith('home_')) return HS.HOUSING[S.housing].landmark === id;
     if(id === 'firm') return !!S.path;
     if(id === 'sec') return S.heat >= 25;
+    if(id === 'gym' || id === 'store') return true;
     return true;
   };
   G.landmarkColor = function(id){
@@ -135,9 +137,8 @@ HS.Game = function(){
       S.hour += dt * HS.MINUTES_PER_SECOND / 60;
       while(S.hour >= 24){ S.hour -= 24; rollDay(); }
 
-      // walking burns energy
+      // walking is free — energy is spent on actions, not on getting there
       if(player.moving){
-        S.energy = HS.clamp(S.energy - dt * (player.sprinting ? 0.9 : 0.42), 0, 100);
         walkSfx -= dt;
         if(walkSfx <= 0){ HS.Audio.step(); walkSfx = player.sprinting ? 0.26 : 0.38; }
       }
@@ -160,7 +161,7 @@ HS.Game = function(){
 
     world.update(dt, S.hour, player.x, player.z, false);
     world.render();
-    ui.drawMinimap(city, player.x, player.z, player.angle);
+    ui.drawMinimap(city, player.x, player.z, player.angle, dt);
     updateProximity();
   }
 
@@ -228,6 +229,51 @@ HS.Game = function(){
   function closeMenu(){ $('menu').classList.remove('show'); paused = false; }
   G.setPaused = v => { paused = v; };
 
+  /* The career screen: where you are, what is next, what is still locked. */
+  function showCareer(){
+    const S = G.S;
+    const r = HS.rankOf(S);
+    const nr = S.rank >= 6 && S.path
+      ? (HS.PATHS[S.path].ranks.find(x => x.i === S.rank + 1) || null)
+      : HS.nextRank(S);
+
+    let html = '<div class="career-now"><span class="k">CURRENT</span>' +
+               '<b>' + r.name + '</b></div>';
+
+    if(S.rank === 5 && !S.path){
+      html += '<p class="dim">The ladder ends here. Go to the Exchange and choose a path.</p>';
+    } else if(nr){
+      html += '<div class="career-next"><span class="k">NEXT — ' + nr.name + '</span>' +
+        HS.needText(S, nr.need).map(n =>
+          '<div class="req ' + (n.ok ? 'ok' : '') + '"><span>' + n.label + '</span>' +
+          '<b>' + n.text + '</b></div>').join('') +
+        '</div>';
+    } else {
+      html += '<p class="dim">There is nothing above this.</p>';
+    }
+
+    const rows = HS.UNLOCKS.map(u => {
+      const have = u.by === 'rank' ? S.rank >= u.at : S.skill >= u.at;
+      const gate = u.by === 'rank'
+        ? (HS.RANKS[u.at] ? HS.RANKS[u.at].name : 'Rank ' + u.at)
+        : 'Skill ' + u.at;
+      return '<div class="unlock ' + (have ? 'have' : '') + '">' +
+        '<span class="tick">' + (have ? '✓' : '·') + '</span>' +
+        '<span class="un"><b>' + u.name + '</b><em>' + u.note + '</em></span>' +
+        '<span class="gate">' + (have ? 'open' : gate) + '</span></div>';
+    }).join('');
+    html += '<div class="career-unlocks"><span class="k">UNLOCKS</span>' + rows + '</div>';
+
+    if(S.path){
+      const p = HS.PATHS[S.path];
+      html += '<div class="career-path" style="border-color:' + p.accent + '">' +
+        '<b style="color:' + p.accent + '">' + p.name + '</b><span>' + p.blurb + '</span></div>';
+    }
+
+    ui.modal({ title:'CAREER', body: html,
+      actions:[{ label:'Back', onClick:()=>ui.closeModal() }] });
+  }
+
   function statLines(){
     const S = G.S;
     const r = HS.rankOf(S);
@@ -277,7 +323,7 @@ HS.Game = function(){
                     : '<p>You wake up at home. There was nothing left to take.</p>'),
         actions:[{ label:'Get up', onClick:()=>{
           ui.closeModal();
-          doSleep(52);
+          doSleep(S.maxEnergy * 0.5);
           collapsing = false;
         }}]
       });
@@ -285,7 +331,7 @@ HS.Game = function(){
   }
 
   /* ================= actions ================= */
-  G.sleep = function(){ doSleep(HS.HOUSING[G.S.housing].sleepEnergy); };
+  G.sleep = function(){ doSleep(HS.HOUSING[G.S.housing].sleepPct * G.S.maxEnergy); };
 
   function doSleep(energyTo){
     const S = G.S;
@@ -293,12 +339,106 @@ HS.Game = function(){
     // advance to 7am the next morning
     if(S.hour >= 7) { S.hour = 7; rollDay(); }
     else { S.hour = 7; }
-    S.energy = Math.max(S.energy, energyTo);
+    S.energy = HS.clamp(Math.max(S.energy, energyTo), 0, S.maxEnergy);
     placeAtHome(true);
     HS.save(S);
     ui.syncHud();
     ui.toast('Day ' + S.day + '. ' + HS.dayName(S.day) + ', 7:00.', '');
     checkFail();
+  }
+
+  /* A trading session always ends at the close. */
+  function toTheBell(){
+    const S = G.S;
+    S.hour = HS.MARKET_CLOSE + 0.25;
+    ui.syncHud();
+  }
+
+  G.trainGym = function(cost){
+    const S = G.S;
+    S.cash -= cost;
+    G.spendTime(1.5);
+    HS.addEnergy(S, -HS.ENERGY.gym);
+    S.maxEnergy = HS.clamp(S.maxEnergy + 4, 0, HS.MAX_ENERGY_CAP);
+    S.gymToday = true;
+    HS.Audio.levelUp();
+    ui.toast('Stamina up to ' + Math.round(S.maxEnergy) + '.', 'good');
+    ui.syncHud(); HS.save(S);
+  };
+
+  G.buyDrink = function(drink, price){
+    const S = G.S;
+    S.cash -= price;
+    S.drinksToday++;
+    G.spendTime(0.25);
+    HS.addEnergy(S, drink.energy);
+    HS.Audio.cash();
+    ui.toast('+' + drink.energy + ' energy. The next one costs more.', 'good');
+    ui.syncHud(); HS.save(S);
+  };
+
+  /* Chart review: a crossover read on tomorrow's tape. What it TELLS you is
+     only right `confidence` percent of the time — the truth is stored apart. */
+  G.chartReview = function(){
+    const S = G.S;
+    G.spendTime(1);
+    HS.addEnergy(S, -HS.ENERGY.review);
+    S.reviewedToday = true;
+
+    const confidence = Math.round(HS.clamp(50 + S.skill * 0.45, 50, 95));
+    const truth = Math.random() < 0.5 ? 1 : -1;
+    const right = Math.random() * 100 < confidence;
+    const shown = right ? truth : -truth;
+    S.edge = { day: S.day, dir: truth, shown, confidence };
+
+    HS.Audio.levelUp();
+    ui.modal({
+      title: shown > 0 ? 'GOLDEN CROSS' : 'DEATH CROSS',
+      tone: shown > 0 ? 'good' : 'bad',
+      body: crossSvg(shown) +
+        '<p>The fifty-day has crossed ' + (shown > 0 ? 'up through' : 'down through') +
+        ' the two-hundred. On this read the tape opens ' +
+        (shown > 0 ? '<b class="up">bid</b>' : '<b class="down">offered</b>') + '.</p>' +
+        '<p class="dim">Your read is <b>' + confidence + '%</b> reliable at skill ' +
+        Math.round(S.skill) + '. Study more and it sharpens.</p>',
+      actions:[{ label:'Noted', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }]
+    });
+  };
+
+  /* A little moving-average crossover picture for the review modal. */
+  function crossSvg(dir){
+    const W = 460, H = 130, N = 70;
+    const px = [];
+    let p = 50;
+    for(let i = 0; i < N; i++){
+      const drift = i < N*0.45 ? -dir*0.22 : dir*0.55;
+      p += drift + (Math.random()-0.5)*1.7;
+      px.push(p);
+    }
+    const ma = n => px.map((_, i) => {
+      const a = Math.max(0, i-n+1);
+      const w = px.slice(a, i+1);
+      return w.reduce((s,v)=>s+v,0)/w.length;
+    });
+    const fast = ma(6), slow = ma(18);
+    const all = px.concat(fast, slow);
+    const lo = Math.min.apply(null, all), hi = Math.max.apply(null, all);
+    const X = i => 6 + i/(N-1)*(W-12);
+    const Y = v => H-10 - (v-lo)/Math.max(0.001,(hi-lo))*(H-22);
+    const path = arr => arr.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join(' ');
+
+    let cross = Math.floor(N*0.5);
+    for(let i = 1; i < N; i++){
+      if((fast[i-1]-slow[i-1]) * (fast[i]-slow[i]) < 0) cross = i;
+    }
+    const col = dir > 0 ? '#3FD68C' : '#FF5B67';
+    return '<svg class="cross" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
+      '<path d="' + path(px) + '" fill="none" stroke="rgba(233,237,243,.22)" stroke-width="1.4"/>' +
+      '<path d="' + path(slow) + '" fill="none" stroke="#8993A5" stroke-width="2"/>' +
+      '<path d="' + path(fast) + '" fill="none" stroke="' + col + '" stroke-width="2.4"/>' +
+      '<circle cx="' + X(cross).toFixed(1) + '" cy="' + Y(fast[cross]).toFixed(1) +
+        '" r="6" fill="none" stroke="' + col + '" stroke-width="2"/>' +
+      '</svg>';
   }
 
   G.promoteTo = function(rank, customText){
@@ -335,8 +475,8 @@ HS.Game = function(){
     const S = G.S;
     S.workedToday = true;
     S.stats.trades++;
-    G.spendTime(2);
-    S.energy = HS.clamp(S.energy - 22, 0, 100);
+    toTheBell();
+    HS.addEnergy(S, -HS.ENERGY.work);
 
     const salary = HS.rankOf(S).salary;
     const commission = res.pnl > 0 ? res.pnl * desk.commission : 0;
@@ -371,8 +511,8 @@ HS.Game = function(){
   G.finishPropSession = function(res, stake, isLegend){
     const S = G.S;
     S.stats.trades++;
-    G.spendTime(isLegend ? 3 : 2);
-    S.energy = HS.clamp(S.energy - (isLegend ? 28 : 26), 0, 100);
+    toTheBell();
+    HS.addEnergy(S, -HS.ENERGY.prop);
     S.cash += res.pnl;
     if(res.pnl > S.stats.bestDay) S.stats.bestDay = res.pnl;
     HS.addSkill(S, res.pnl > 0 ? 0.8 : 0.5);
@@ -397,8 +537,8 @@ HS.Game = function(){
   G.finishFundSession = function(res){
     const S = G.S;
     S.stats.trades++;
-    G.spendTime(2);
-    S.energy = HS.clamp(S.energy - 26, 0, 100);
+    toTheBell();
+    HS.addEnergy(S, -HS.ENERGY.fund);
     S.aum = Math.max(0, S.aum + res.pnl);
     S.cash += res.pnl > 0 ? res.pnl * 0.2 : 0;
     if(S.tips > 0){ S.tips--; HS.addHeat(S, 10); }
@@ -423,7 +563,7 @@ HS.Game = function(){
     const S = G.S;
     S.cash -= cost; S.networkedToday = true;
     G.spendTime(2);
-    S.energy = HS.clamp(S.energy - 16, 0, 100);
+    HS.addEnergy(S, -HS.ENERGY.network);
     const gain = 2.2 + Math.random() * 2.6 + S.rank * 0.25;
     HS.addRep(S, gain);
     let extra = '';
@@ -436,7 +576,7 @@ HS.Game = function(){
     const S = G.S;
     S.cash -= cost;
     G.spendTime(2);
-    S.energy = HS.clamp(S.energy - 12, 0, 100);
+    HS.addEnergy(S, -HS.ENERGY.round);
     const gain = 7 + Math.random() * 5 + S.rank * 0.4;
     HS.addRep(S, gain);
     S.contacts++;
@@ -449,7 +589,7 @@ HS.Game = function(){
     S.contacts--;
     S.tips++;
     G.spendTime(1);
-    S.energy = HS.clamp(S.energy - 6, 0, 100);
+    HS.addEnergy(S, -HS.ENERGY.favour);
     HS.Audio.cash();
     ui.toast('A friend owes you one. You have a tip, and no heat.', 'good');
     ui.syncHud(); HS.save(S);
@@ -458,7 +598,7 @@ HS.Game = function(){
   G.buyTip = function(){
     const S = G.S;
     G.spendTime(2);
-    S.energy = HS.clamp(S.energy - 10, 0, 100);
+    HS.addEnergy(S, -HS.ENERGY.tip);
     S.tips++;
     HS.addHeat(S, 12);
     HS.Audio.warn();
@@ -472,7 +612,7 @@ HS.Game = function(){
     const S = G.S;
     S.cash -= c.cash;
     G.spendTime(c.hours);
-    S.energy = HS.clamp(S.energy - c.energy, 0, 100);
+    HS.addEnergy(S, -c.energy);
     HS.addSkill(S, c.skill);
     S.studiedToday = true;
     HS.Audio.levelUp();
@@ -580,7 +720,7 @@ HS.Game = function(){
   G.raiseCapital = function(amount){
     const S = G.S;
     G.spendTime(3);
-    S.energy = HS.clamp(S.energy - 20, 0, 100);
+    HS.addEnergy(S, -HS.ENERGY.raise);
     const got = Math.floor(amount * (0.6 + S.rep/100 * 0.8));
     S.aum += got;
     S.investors += 1 + Math.floor(Math.random()*3);
@@ -743,6 +883,33 @@ HS.Game = function(){
   }
 
   /* ================= objective ================= */
+  /* Which building the current objective sends you to. Highlighted on the map. */
+  G.objectiveTarget = function(){
+    const S = G.S;
+    if(S.ended) return null;
+    if(S.energy < 22) return S.cash > 400 ? 'store' : HS.HOUSING[S.housing].landmark;
+    if(S.rank === 0) return 'brokerage';
+    if(S.rank === 5 && !S.path) return 'exchange';
+
+    const nr = S.rank >= 6 && S.path
+      ? (HS.PATHS[S.path].ranks.find(r => r.i === S.rank + 1) || null)
+      : HS.nextRank(S);
+    if(!nr || !nr.need) return S.rank >= 6 ? 'firm' : 'brokerage';
+
+    // send the player at whichever requirement they are furthest from
+    const gaps = [];
+    if(nr.need.skill != null)   gaps.push([ (nr.need.skill - S.skill) / nr.need.skill, 'school' ]);
+    if(nr.need.rep != null)     gaps.push([ (nr.need.rep - S.rep) / nr.need.rep, 'bar' ]);
+    if(nr.need.cash != null)    gaps.push([ (nr.need.cash - S.cash) / nr.need.cash,
+                                            S.rank >= 6 ? 'firm' : 'brokerage' ]);
+    if(nr.need.brokers != null) gaps.push([ (nr.need.brokers - S.brokers.length) / nr.need.brokers, 'firm' ]);
+    if(nr.need.aum != null)     gaps.push([ (nr.need.aum - S.aum) / nr.need.aum, 'firm' ]);
+
+    gaps.sort((a,b) => b[0] - a[0]);
+    if(!gaps.length || gaps[0][0] <= 0) return S.rank >= 6 ? 'firm' : 'brokerage';
+    return gaps[0][1];
+  };
+
   G.objectiveText = function(){
     const S = G.S;
     if(S.ended) return 'The story is over.';

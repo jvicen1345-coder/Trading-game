@@ -14,31 +14,36 @@ HS.CITY = { GRID, BLOCK, ROAD, CELL, SIZE, HALF };
 
 /* Where the story happens. block:[i,j] indexes the street grid. */
 const LANDMARKS = [
-  { id:'home_basement', block:[1,9], name:"Parents' Basement",   short:'HOME',
+  { id:'home_basement', block:[1,9], name:"Parents' Basement",   short:'HOME', icon:'home',
     color:0x6E5B47, h:9,  w:26, d:22, accent:0xE8B85C },
-  { id:'home_studio',   block:[3,8], name:'Rented Studio',       short:'HOME',
+  { id:'home_studio',   block:[3,8], name:'Rented Studio',       short:'HOME', icon:'home',
     color:0x5C6270, h:26, w:26, d:24, accent:0xE8B85C, hidden:true },
-  { id:'home_loft',     block:[7,3], name:'Riverside Loft',      short:'HOME',
+  { id:'home_loft',     block:[7,3], name:'Riverside Loft',      short:'HOME', icon:'home',
     color:0x4A5666, h:38, w:30, d:26, accent:0xE8B85C, hidden:true },
-  { id:'home_penthouse',block:[5,1], name:'Sky Penthouse',       short:'HOME',
+  { id:'home_penthouse',block:[5,1], name:'Sky Penthouse',       short:'HOME', icon:'home',
     color:0x2F3A4C, h:56, w:30, d:28, accent:0xE8B85C, hidden:true },
 
-  { id:'brokerage', block:[4,6], name:'Ladder & Co. Brokerage',  short:'WORK',
+  { id:'brokerage', block:[4,6], name:'Ladder & Co. Brokerage',  short:'WORK', icon:'work',
     color:0x3A4658, h:38, w:34, d:30, accent:0x3ECFCF },
-  { id:'exchange',  block:[5,5], name:'The Exchange',            short:'FLOOR',
+  { id:'exchange',  block:[5,5], name:'The Exchange',            short:'FLOOR', icon:'exchange',
     color:0x2A3242, h:52, w:38, d:34, accent:0x8B6BFF },
-  { id:'bank',      block:[3,4], name:'First Federal Bank',      short:'BANK',
+  { id:'bank',      block:[3,4], name:'First Federal Bank',      short:'BANK', icon:'bank',
     color:0x4C4638, h:34, w:32, d:28, accent:0x46C98A },
-  { id:'bar',       block:[7,7], name:'The Ticker Bar',          short:'BAR',
+  { id:'bar',       block:[7,7], name:'The Ticker Bar',          short:'BAR', icon:'bar',
     color:0x54303A, h:16, w:28, d:24, accent:0xFF5B67 },
-  { id:'school',    block:[1,7], name:'Vance Night School',      short:'LEARN',
+  { id:'school',    block:[1,7], name:'Vance Night School',      short:'LEARN', icon:'school',
     color:0x3E4A44, h:24, w:30, d:26, accent:0x9BD46B },
-  { id:'realtor',   block:[8,4], name:'Kestrel Realty',          short:'HOMES',
+  { id:'realtor',   block:[8,4], name:'Kestrel Realty',          short:'HOMES', icon:'realty',
     color:0x4A4258, h:20, w:28, d:24, accent:0xE0A6FF },
-  { id:'sec',       block:[9,9], name:'SEC Field Office',        short:'SEC',
+  { id:'sec',       block:[9,9], name:'SEC Field Office',        short:'SEC', icon:'sec',
     color:0x3A3A3A, h:30, w:30, d:28, accent:0xFF8A3C },
-  { id:'firm',      block:[6,3], name:'Your Firm',               short:'HQ',
-    color:0x2C3A38, h:46, w:36, d:32, accent:0xE8B85C, hidden:true }
+  { id:'firm',      block:[6,3], name:'Your Firm',               short:'HQ', icon:'firm',
+    color:0x2C3A38, h:46, w:36, d:32, accent:0xE8B85C, hidden:true },
+
+  { id:'gym',       block:[7,5], name:'Ironside Gym',             short:'GYM', icon:'gym',
+    color:0x3E3A4A, h:18, w:30, d:26, accent:0x6BD4C0 },
+  { id:'store',     block:[5,7], name:'Kwik Corner',              short:'STORE', icon:'store',
+    color:0x4A4630, h:12, w:24, d:20, accent:0xF0E06A }
 ];
 
 /* block index -> world-space rectangle */
@@ -80,6 +85,7 @@ HS.buildCity = function(seed){
         colliders.push({ x0:b.x-b.w/2, z0:b.z-b.d/2, x1:b.x+b.w/2, z1:b.z+b.d/2 });
         landmarks.push({
           id:lm.id, name:lm.name, short:lm.short, accent:lm.accent, hidden:!!lm.hidden,
+          icon:lm.icon,
           x:b.x, z:b.z + b.d/2 + 4,          // door: just outside the south wall
           bx:b.x, bz:b.z, bh:b.h, bw:b.w, bd:b.d
         });

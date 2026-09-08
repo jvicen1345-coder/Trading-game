@@ -6,7 +6,6 @@ const $ = HS.$;
 
 HS.UI = function(game){
   const U = {};
-  let panelOpen = false;
 
   /* ---------------- HUD ---------------- */
   U.syncHud = function(){
@@ -19,17 +18,17 @@ HS.UI = function(game){
     $('hudDay').textContent  = 'Day ' + S.day + ' · ' + HS.dayName(S.day);
     $('hudClock').textContent = HS.clockStr(S.hour);
 
-    bar('barEnergy', S.energy, 100);
+    bar('barEnergy', S.energy, S.maxEnergy || 100);
     bar('barSkill',  S.skill, 100);
     bar('barRep',    S.rep, 100);
     bar('barHeat',   S.heat, 100);
-    $('valEnergy').textContent = Math.round(S.energy);
+    $('valEnergy').textContent = Math.round(S.energy) + (S.maxEnergy > 100 ? '/' + Math.round(S.maxEnergy) : '');
     $('valSkill').textContent  = Math.round(S.skill);
     $('valRep').textContent    = Math.round(S.rep);
     $('valHeat').textContent   = Math.round(S.heat);
 
     $('rowHeat').classList.toggle('danger', S.heat >= 60);
-    $('rowEnergy').classList.toggle('danger', S.energy <= 20);
+    $('rowEnergy').classList.toggle('danger', S.energy <= S.maxEnergy * 0.2);
 
     const loanRow = $('hudLoan');
     loanRow.style.display = S.loan > 0 ? '' : 'none';
@@ -96,14 +95,11 @@ HS.UI = function(game){
     });
 
     p.classList.add('show');
-    panelOpen = true;
     U.syncHud();
   };
-  U.closePanel = function(){
-    $('panel').classList.remove('show');
-    panelOpen = false;
-  };
-  U.isPanelOpen = () => panelOpen;
+  U.closePanel = function(){ $('panel').classList.remove('show'); };
+  /* Read the DOM rather than a flag, so the two can never disagree. */
+  U.isPanelOpen = () => $('panel').classList.contains('show');
 
   /* ---------------- modal (story beats, confirms) ---------------- */
   U.modal = function(opts){
@@ -124,8 +120,10 @@ HS.UI = function(game){
   U.isModalOpen = () => $('modal').classList.contains('show');
 
   /* ---------------- minimap ---------------- */
+  /* The camera never rotates, so map-up is always screen-up: +x right, +z down. */
   const mm = $('minimap'), mx = mm.getContext('2d');
-  let mmSize = 0;
+  let mmSize = 0, mmPulse = 0;
+
   U.resizeMinimap = function(){
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const s = mm.clientWidth;
@@ -133,46 +131,111 @@ HS.UI = function(game){
     mx.setTransform(dpr, 0, 0, dpr, 0, 0);
     mmSize = s;
   };
-  U.drawMinimap = function(city, px, pz, angle){
+
+  /* Tiny glyphs, drawn in a 10x10 box centred on (0,0). */
+  const GLYPH = {
+    home(c){ c.beginPath(); c.moveTo(0,-4.4); c.lineTo(4.4,-0.6); c.lineTo(2.9,-0.6);
+             c.lineTo(2.9,4.2); c.lineTo(-2.9,4.2); c.lineTo(-2.9,-0.6); c.lineTo(-4.4,-0.6);
+             c.closePath(); c.fill(); },
+    work(c){ c.fillRect(-4.2,-1.6,8.4,5.6); c.fillRect(-1.9,-3.9,3.8,1.6);
+             c.clearRect(-0.7,0.4,1.4,1.4); },
+    exchange(c){ c.fillRect(-4.4,2.6,8.8,1.6);            // stepped floor
+                 c.fillRect(-3.4,-0.4,1.9,3); c.fillRect(-0.9,-2.4,1.9,5);
+                 c.fillRect(1.6,-4.2,1.9,6.8); },
+    bank(c){ c.beginPath(); c.moveTo(0,-4.3); c.lineTo(4.6,-1.4); c.lineTo(-4.6,-1.4);
+             c.closePath(); c.fill();
+             c.fillRect(-3.6,-0.4,1.5,3.6); c.fillRect(-0.7,-0.4,1.5,3.6);
+             c.fillRect(2.2,-0.4,1.5,3.6); c.fillRect(-4.4,3.4,8.8,1.3); },
+    bar(c){ c.beginPath(); c.moveTo(-4,-3.8); c.lineTo(4,-3.8); c.lineTo(0.9,0.2);
+            c.lineTo(0.9,3.4); c.lineTo(2.9,3.4); c.lineTo(2.9,4.5); c.lineTo(-2.9,4.5);
+            c.lineTo(-2.9,3.4); c.lineTo(-0.9,3.4); c.lineTo(-0.9,0.2); c.closePath(); c.fill(); },
+    school(c){ c.beginPath(); c.moveTo(0,-4.2); c.lineTo(5,-1.7); c.lineTo(0,0.8);
+               c.lineTo(-5,-1.7); c.closePath(); c.fill();
+               c.fillRect(-2.7,0.1,5.4,3.9); },
+    realty(c){ c.beginPath(); c.arc(-1.4,-1.4,2.6,0,Math.PI*2); c.fill();
+               c.fillRect(0.2,0.0,4.2,1.5); c.fillRect(3.0,1.5,1.4,1.9); },
+    sec(c){ c.beginPath(); c.moveTo(0,-4.5); c.lineTo(4.2,-2.6); c.lineTo(4.2,1.2);
+            c.quadraticCurveTo(4.2,4.0,0,4.8); c.quadraticCurveTo(-4.2,4.0,-4.2,1.2);
+            c.lineTo(-4.2,-2.6); c.closePath(); c.fill(); },
+    firm(c){ c.beginPath();
+             for(let i=0;i<10;i++){ const a=-Math.PI/2 + i*Math.PI/5, r = i%2 ? 2.1 : 4.9;
+               c[i?'lineTo':'moveTo'](Math.cos(a)*r, Math.sin(a)*r); }
+             c.closePath(); c.fill(); },
+    gym(c){ c.fillRect(-1.8,-1.3,3.6,2.6);                 // bar
+            c.fillRect(-4.6,-2.8,1.8,5.6); c.fillRect(2.8,-2.8,1.8,5.6);   // plates
+            c.fillRect(-2.9,-2.0,1.1,4.0); c.fillRect(1.8,-2.0,1.1,4.0); },
+    store(c){ c.beginPath(); c.moveTo(-2.6,-4.3); c.lineTo(2.6,-4.3); c.lineTo(2.0,4.4);
+              c.lineTo(-2.0,4.4); c.closePath(); c.fill();
+              c.clearRect(-1.2,-2.0,2.4,1.1); }
+  };
+
+  U.drawMinimap = function(city, px, pz, angle, dt){
     if(!mmSize) U.resizeMinimap();
-    const S = mmSize, half = city.half + 24;
+    mmPulse += (dt || 0.016);
+    const S = mmSize, half = city.half + 26;
     const toMap = (x, z) => [ (x + half) / (half*2) * S, (z + half) / (half*2) * S ];
 
     mx.clearRect(0, 0, S, S);
-    mx.fillStyle = '#0A0D13';
+    mx.fillStyle = '#080B11';
     mx.fillRect(0, 0, S, S);
 
-    // street grid
+    // city blocks, so the grid reads as a place rather than graph paper
     const C = HS.CITY;
-    mx.strokeStyle = 'rgba(255,255,255,.10)';
-    mx.lineWidth = 1;
-    mx.beginPath();
-    for(let i = 0; i <= C.GRID; i++){
-      const w = -city.half + i * C.CELL;
-      const a = toMap(w, -half), b = toMap(w, half);
-      mx.moveTo(a[0], a[1]); mx.lineTo(b[0], b[1]);
-      const c = toMap(-half, w), d = toMap(half, w);
-      mx.moveTo(c[0], c[1]); mx.lineTo(d[0], d[1]);
+    mx.fillStyle = 'rgba(255,255,255,.055)';
+    for(let i = 0; i < C.GRID; i++) for(let j = 0; j < C.GRID; j++){
+      const r = HS.blockRect(i, j);
+      const a = toMap(r.x0, r.z0), b = toMap(r.x1, r.z1);
+      mx.fillRect(a[0], a[1], b[0]-a[0], b[1]-a[1]);
     }
-    mx.stroke();
 
-    // landmarks
+    const targetId = game.objectiveTarget();
+
+    // landmark badges
     city.landmarks.forEach(lm => {
       if(!game.isLandmarkActive(lm.id)) return;
       const [x, y] = toMap(lm.x, lm.z);
-      mx.fillStyle = game.landmarkColor(lm.id);
-      mx.beginPath(); mx.arc(x, y, 3.1, 0, Math.PI*2); mx.fill();
+      const col = game.landmarkColor(lm.id);
+      const isTarget = lm.id === targetId;
+
+      if(isTarget){                                   // pulsing halo on the objective
+        const t = 0.5 + Math.sin(mmPulse * 3.4) * 0.5;
+        mx.beginPath(); mx.arc(x, y, 11 + t*4, 0, Math.PI*2);
+        mx.fillStyle = 'rgba(232,184,92,' + (0.10 + t*0.16).toFixed(3) + ')';
+        mx.fill();
+        mx.beginPath(); mx.arc(x, y, 10.5, 0, Math.PI*2);
+        mx.strokeStyle = '#E8B85C'; mx.lineWidth = 1.6; mx.stroke();
+      }
+
+      mx.save();
+      mx.translate(x, y);
+      mx.beginPath();
+      const R = 7.6;
+      mx.moveTo(-R+2.4,-R); mx.arcTo(R,-R,R,R,2.4); mx.arcTo(R,R,-R,R,2.4);
+      mx.arcTo(-R,R,-R,-R,2.4); mx.arcTo(-R,-R,R,-R,2.4); mx.closePath();
+      mx.fillStyle = col; mx.globalAlpha = isTarget ? 1 : 0.92; mx.fill();
+      mx.globalAlpha = 1;
+      mx.fillStyle = '#080B11';
+      mx.scale(0.92, 0.92);
+      const g = GLYPH[lm.icon];
+      if(g) g(mx); else { mx.beginPath(); mx.arc(0,0,2.4,0,Math.PI*2); mx.fill(); }
+      mx.restore();
     });
 
-    // player
+    // player: arrow along the actual heading. World +z is map-down, so this
+    // matches what the (never-rotating) camera shows on screen.
     const [x, y] = toMap(px, pz);
-    mx.save();
-    mx.translate(x, y); mx.rotate(-angle);
-    mx.fillStyle = '#FFFFFF';
+    const dx = Math.sin(angle), dy = Math.cos(angle);
+    const nx = -dy, ny = dx;                                  // left normal
+    const tip = 7.5, back = 4.4, wide = 4.2;
     mx.beginPath();
-    mx.moveTo(0, -5); mx.lineTo(3.4, 4); mx.lineTo(0, 2); mx.lineTo(-3.4, 4);
-    mx.closePath(); mx.fill();
-    mx.restore();
+    mx.moveTo(x + dx*tip,               y + dy*tip);
+    mx.lineTo(x - dx*back + nx*wide,    y - dy*back + ny*wide);
+    mx.lineTo(x - dx*1.6,               y - dy*1.6);
+    mx.lineTo(x - dx*back - nx*wide,    y - dy*back - ny*wide);
+    mx.closePath();
+    mx.fillStyle = '#FFFFFF';
+    mx.strokeStyle = '#080B11'; mx.lineWidth = 1.4;
+    mx.fill(); mx.stroke();
   };
 
   return U;
