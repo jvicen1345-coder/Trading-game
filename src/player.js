@@ -7,7 +7,7 @@ const RADIUS = 1.15;
 const WALK   = 15.5;
 const SPRINT = 26;
 
-/* Outfits unlock as the career climbs - visible progress on the street. */
+/* Outfits unlock as the career climbs: visible progress on the street. */
 HS.OUTFITS = [
   { id:0, name:'Hoodie',        body:0x4A5260, legs:0x2E3440, skin:0xC9A084, tie:null     },
   { id:1, name:'Cheap Suit',    body:0x3C4454, legs:0x2A303C, skin:0xC9A084, tie:0x8A4A4A },

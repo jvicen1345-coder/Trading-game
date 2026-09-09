@@ -34,7 +34,7 @@ HS.deskFor = function(S){
   return arr[HS.clamp(S.rank, 1, arr.length - 1)] || arr[1];
 };
 
-/* A full weekday - review, session, a class and the bar - costs about a whole
+/* A full weekday (review, session, a class and the bar) costs about a whole
    refreshed day's energy, so you have to choose what not to do. */
 const E = {
   work:24, review:14, gym:16,
@@ -55,7 +55,7 @@ HS.Locations = function(game){
   const cost = (s, base) => HS.energyCost(s, base);
 
   function marketWhy(s){
-    if(HS.isWeekend(s.day)) return 'The market is shut - it is the weekend';
+    if(HS.isWeekend(s.day)) return 'The market is shut for the weekend';
     if(s.hour >= HS.MARKET_CLOSE - 0.4) return 'The bell has rung. Come back tomorrow';
     return null;
   }
@@ -138,7 +138,7 @@ HS.Locations = function(game){
         stat('If you sleep now', rest.name, rest.id === 2 ? 'good' : rest.id === 0 ? 'bad' : '') +
         stat('You would wake with', wake) +
       '</div>' +
-      para('<span class="dim">' + rest.note + '. Turning in before half nine leaves you refreshed - sharper reads, and everything costs less effort.</span>');
+      para('<span class="dim">' + rest.note + '. Turning in before half nine leaves you refreshed: sharper reads, and everything costs less effort.</span>');
 
     const actions = [
       { label:'Sleep', detail:'Wake at 7:00 with ' + wake + ' energy · ' + rest.name,
@@ -380,7 +380,7 @@ HS.Locations = function(game){
     });
     if(s.contacts > 0){
       actions.push({
-        label:'Call in a favour', detail:'A contact tells you what they are seeing - no heat',
+        label:'Call in a favour', detail:'A contact tells you what they are seeing, and no heat with it',
         cost: HS.freeFavour(s) ? 'free' : '1h · ' + cost(s,E.favour) + ' energy · 1 contact',
         disabled: !isOpen, why:'The bar is shut',
         onClick: () => { ui().closePanel(); game.callFavour(); }
@@ -438,7 +438,7 @@ HS.Locations = function(game){
         stat('Living in', HS.HOUSING[s.housing].name) +
         stat('Weekly rent', HS.HOUSING[s.housing].rent ? HS.money(HS.HOUSING[s.housing].rent) : 'free') +
       '</div>' +
-      (next ? para('<b>' + next.name + '</b> - ' + next.desc)
+      (next ? para('<b>' + next.name + '</b>. ' + next.desc)
             : para('<span class="dim">There is nothing above the penthouse.</span>'));
     const actions = [];
     if(next){

@@ -93,7 +93,7 @@ HS.EXPIRY_KINDS = {
   'weekly': { id:'weekly', name:'WEEKLY', unlockRank:0, ivMult:1.00,
               blurb:'Runs to Friday\'s close. The everyday contract.' },
   'leap':   { id:'leap',   name:'LEAP',   unlockRank:1, ivMult:0.80,
-              blurb:'A quarter of time value. One slot only - choose well.' }
+              blurb:'A quarter of time value. One slot only, so choose well.' }
 };
 HS.LEAP_DAYS = 60;                       // one quarter of trading days
 

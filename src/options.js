@@ -14,7 +14,7 @@ HS.EXPIRIES = [
   { id:'weekly', name:'WEEKLY', label:'5d',  days:5,   ivMult:1.00, unlockRank:0,
     blurb:'Five sessions of life. The everyday contract.' },
   { id:'leap',   name:'LEAP',   label:'1y',  days:252, ivMult:0.80, unlockRank:2,
-    blurb:'A year out. Barely any theta - closest thing to owning the stock.' },
+    blurb:'A year out. Barely any theta, the closest thing to owning the stock.' },
   { id:'0dte',   name:'0DTE',   label:'today', days:0, ivMult:1.35, unlockRank:4,
     blurb:'Expires at the bell. All gamma, all theta, no mercy.' }
 ];
