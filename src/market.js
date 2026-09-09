@@ -147,22 +147,19 @@ HS.Market.run = function(opts, done){
 
   /* A name on the street gets you a better ticket: up to 40% off commission. */
   const feeEach = () => cfg.feePerContract * HS.feeMul(G) * (1 - Math.min(0.4, G.rep / 250));
-  function buyingPower(){ return equity() * cfg.leverage * HS.sizeMul(G); }
+  /* Premium is paid in cash and nothing else. Long options already lose their
+     whole value on a bad day, so lending against them means a single session
+     can clear the stop-out floor and take the account with it. Measured at
+     every rate down to five percent: it breaks runs. Capacity is your cash. */
+  function buyingPower(){ return Math.max(0, G.cash); }
 
-  /* Long premium is paid in cash; leverage cannot buy it. Leverage is margin,
-     so it only widens what you may write. */
-  function maxQty(contract, isWrite){
-    const q = quoteOf(contract);
-    if(isWrite){
-      const margin = contract.strike * CS * 0.25 * HS.marginMul(G);
-      return Math.max(0, Math.floor(buyingPower() * 0.5 / Math.max(1, margin)));
-    }
-    const cost = q.ask * CS + feeEach();
-    return Math.max(0, Math.floor(G.cash * 0.92 / Math.max(0.01, cost)));
+  function maxQty(contract){
+    const cost = quoteOf(contract).ask * CS + feeEach();
+    return Math.max(0, Math.floor(buyingPower() * 0.92 / Math.max(0.01, cost)));
   }
   /* Contracts for the currently selected slice of capacity. */
-  function sizedQty(contract, isWrite){
-    const cap = maxQty(contract, isWrite);
+  function sizedQty(contract){
+    const cap = maxQty(contract);
     /* The Blue House will not let you swing. Precision instead of noise,
        which is exactly the wrong trade for a man with an audience. */
     const pct = cfg.blue ? Math.min(M.sizePct, HS.BLUE.sizeCap) : M.sizePct;
@@ -187,20 +184,17 @@ HS.Market.run = function(opts, done){
     if(dir < 0){
       const own = heldLong(c);
       if(own){ closeById(own.id, false); return; }
-      /* And a call you do not own is not yours to sell. Naked calls are the
-         one thing a real broker will not hand a retail account, and the risk
-         on them has no ceiling. */
-      if(c.isCall){
-        flash('You can only sell a call you already own.');
-        HS.Audio.loss(); return;
-      }
+      /* And nothing you do not own is yours to sell. Every position in this
+         game is opened by buying it. */
+      flash('You can only sell what you already own.');
+      HS.Audio.loss(); return;
     }
 
     if(c.kind === 'swing' && HS.swingCount(G) >= HS.swingSlots(G)){
       flash(HS.swingSlots(G) > 1 ? 'Both swing slots are already used.'
                                  : 'Your swing slot is already used.'); return;
     }
-    const qty = sizedQty(c, dir < 0);
+    const qty = sizedQty(c);
     if(qty < 1){ flash(dir > 0 ? 'Not enough cash for even one contract.'
                                : 'Not enough margin to sell that.'); return; }
     const q = quoteOf(c);
@@ -580,7 +574,7 @@ HS.Market.run = function(opts, done){
       if(HS.showDelta(cfg.skill) || HS.alwaysGreeks(G)) bits.push('Δ ' + q.delta.toFixed(2));
       if(HS.showTheta(cfg.skill) || HS.alwaysGreeks(G)) bits.push('Θ ' + q.theta.toFixed(2) + '/day');
       if(HS.showIv(cfg.skill) || HS.alwaysIv(G)) bits.push('IV ' + (q.iv*100).toFixed(0) + '%');
-      const n = sizedQty(M.selected, false);
+      const n = sizedQty(M.selected);
       bits.push(n + ' contract' + (n===1?'':'s') + ' · ' + HS.money(q.ask*CS*n));
       $('mkPosInfo').textContent = bits.join(' · ');
     } else {
@@ -588,18 +582,12 @@ HS.Market.run = function(opts, done){
       $('mkPosName').textContent = 'NO CONTRACT SELECTED';
       $('mkPosInfo').textContent = 'Pick a call or a put from the chain.';
     }
-    /* The sell button says which of the three things it is about to do. */
+    /* Sell only ever closes, so the button is live only when you hold the
+       contract you are looking at, and says so. */
     $('mkBuy').disabled = !M.selected;
-    const sellBtn = $('mkSell'), lbl = sellBtn.firstChild;
-    if(!M.selected){
-      sellBtn.disabled = true; lbl.textContent = 'SELL';
-    } else if(heldLong(M.selected)){
-      sellBtn.disabled = false; lbl.textContent = 'CLOSE';
-    } else if(M.selected.isCall){
-      sellBtn.disabled = true; lbl.textContent = 'SELL';
-    } else {
-      sellBtn.disabled = false; lbl.textContent = 'SELL';
-    }
+    const sellBtn = $('mkSell'), own = M.selected && heldLong(M.selected);
+    sellBtn.disabled = !own;
+    sellBtn.firstChild.textContent = own ? 'CLOSE' : 'SELL';
     [...document.querySelectorAll('#mkQty .mk-size')].forEach(b =>
       b.classList.toggle('sel', +b.dataset.pct === M.sizePct));
   }
@@ -764,6 +752,7 @@ HS.Market.run = function(opts, done){
           .forEach(p => closeById(p.id, true));
       }
       settled = settleAtBell();
+
     }
     M.finished = true; M.running = false;
     detach();

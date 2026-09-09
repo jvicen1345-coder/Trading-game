@@ -32,7 +32,7 @@ HS.PERK_TREES = [
       { id:'r3', name:'Iron Stomach',   x:0.78,y:0.32, needs:['r1'],
         desc:'You can bleed to 25% of the book before they pull you.' },
       { id:'r4', name:'Margin Line',    x:0.22,y:0.60, needs:['r2'], req:{rank:3},
-        desc:'Writing options ties up a third less margin.' },
+        desc:'Your desk extends half again as much buying power.' },
       { id:'r5', name:'Second Slot',    x:0.78,y:0.60, needs:['r3'], req:{rank:3},
         desc:'Hold two swing contracts at once instead of one.' },
       { id:'r6', name:'Whale Hands',    x:0.5, y:0.88, needs:['r4','r5'], req:{rank:5},
@@ -98,7 +98,8 @@ HS.buyPerk = function(S, id){
 HS.sizeMul     = S => (HS.hasPerk(S,'r1') ? 1.3 : 1) * (HS.hasPerk(S,'r6') ? 1.6 : 1);
 HS.feeMul      = S => HS.hasPerk(S,'r2') ? 0.67 : 1;
 HS.bustFloor   = S => HS.hasPerk(S,'r3') ? 0.25 : 0.40;
-HS.marginMul   = S => HS.hasPerk(S,'r4') ? 0.67 : 1;
+/* How far the desk will stretch past your cash. Higher is more rope. */
+HS.marginMul   = S => HS.hasPerk(S,'r4') ? 1.5 : 1;
 HS.swingSlots  = S => HS.hasPerk(S,'r5') ? 2 : 1;
 HS.reviewBonus = S => HS.hasPerk(S,'t6') ? 100 : (HS.hasPerk(S,'t2') ? 10 : 0);
 HS.alwaysIv    = S => HS.hasPerk(S,'t3');

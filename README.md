@@ -42,10 +42,8 @@ In a trading session: `B` buy, `S` sell, `Space` close what you are holding,
 `Tab` change expiry, `1` to `5` pick a rung of the chain (hold `Shift` for the
 put).
 
-You open a position by **buying** it, and **SELL** closes what you are holding.
-A call you do not own is not yours to sell: the risk on a naked call has no
-ceiling and no broker hands that to a retail account. Puts you may sell to
-open, against margin.
+Every position is opened by **buying** it, and **SELL** closes what you are
+holding. Nothing you do not own is yours to sell.
 
 Touch devices get a virtual stick and an ENTER button.
 
@@ -70,8 +68,9 @@ Time is the thing you earn. A new trader gets today and nothing else:
 Contracts outlive the closing bell, so the book you carry home matters. Anything
 still open sits in the **BOOK** tab and is marked against the live tape. Size is
 a share of what you can actually deploy, so a session matters as much at five
-million as it does at five thousand. Long premium is paid in cash; leverage is
-margin, and only widens what you can sell.
+million as it does at five thousand. **Buying power** is what the desk lets you
+carry beyond your own cash and it grows with rank, but it is strictly intraday:
+anything your cash will not cover is sold at the bell.
 
 A session **is** the 9:30 to 4:00 trading day, so getting to work early buys you
 screen time.

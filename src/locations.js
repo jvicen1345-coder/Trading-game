@@ -54,6 +54,7 @@ HS.Locations = function(game){
   function para(t){ return '<p class="pbody">' + t + '</p>'; }
   const cost = (s, base) => HS.energyCost(s, base);
 
+
   function marketWhy(s){
     if(HS.isWeekend(s.day)) return 'The market is shut for the weekend';
     if(s.blackout) return 'No power, no screens, no session today';
@@ -298,16 +299,16 @@ HS.Locations = function(game){
         ? 'You have a headset, a spare terminal and a supervisor who checks on you twice a day.'
         : 'The floor hums. Your desk is ' + (s.rank >= 4 ? 'by the window' : 'near the printer') + '.') +
       '<div class="stats-grid">' +
-        stat('Buying power', d.leverage.toFixed(1) + 'x your cash') +
         stat('Day rate', HS.money(HS.rankOf(s).salary)) +
         stat('Commission', '$' + d.fee.toFixed(2) + '/contract') +
+        stat('Day target', HS.pct(d.target)) +
         stat('Market', why ? 'closed' : 'open until 4:00', why ? 'bad' : 'good') +
       '</div>';
 
     const actions = [ tradeAction(s, 'Trade the session',
-      isIntern ? 'The training account, on the firm\'s terminals' : 'Options, on the firm\'s buying power',
+      isIntern ? 'The training account, on the firm\'s terminals' : 'Options, on the firm\'s terminals',
       isIntern ? 'LADDER & CO. - INTERN' : 'LADDER & CO. - ' + HS.rankOf(s).name.toUpperCase(),
-      d.leverage.toFixed(1) + 'x buying power') ];
+      'Your own cash, on the firm\'s terminals') ];
 
     actions.push(HS.isWeekend(s.day) ? weekStudyAction(s) : reviewAction(s));
 
