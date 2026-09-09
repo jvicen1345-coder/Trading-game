@@ -480,32 +480,82 @@ HS.Game = function(){
     const src = HS.RECRUIT_SOURCES[source];
     G.spendTime(2);
     HS.addEnergy(S, -HS.energyCost(S, HS.ENERGY.network));
+    meetCandidate(cand, src);
+  };
+
+  function meetCandidate(cand, src){
+    const S = G.S;
     const seats = HS.teamSeats(S);
     const full = HS.teamOf(S).length >= seats;
+
+    /* Your counter is worked out from what you think they are worth, not from
+       what they are worth. Misread somebody and you will lowball a good one
+       or hand a fortune to a bad one, and either way it was your read. */
+    const guess = HS.recruitWorth({ tape:cand.est.tape.mid, screen:cand.est.screen.mid,
+                                    nerve:cand.est.nerve.mid });
+    const fair = Math.round(guess);
+    const low  = Math.round(guess * 0.82);
+    const band = st => HS.statText(cand, st);
+
+    const hire = (wage, moraleAt, note) => {
+      ui.closeModal();
+      cand.wage = wage; cand.morale = moraleAt;
+      S.team = HS.teamOf(S); S.team.push(cand);
+      HS.Audio.levelUp();
+      ui.toast(cand.name + ' is on the payroll at ' + HS.money(wage) + ' a week. ' + note, 'good');
+      ui.syncHud(); HS.save(S);
+    };
+    const walk = () => {
+      ui.closeModal();
+      HS.Audio.loss();
+      ui.toast(cand.name + ' thanks you for your time and does not call back.', 'bad');
+      ui.syncHud(); HS.save(S);
+    };
+    const offer = (amount, moraleAt) => {
+      if(amount >= cand.floor) return hire(amount, moraleAt, 'They took it.');
+      /* A hair under and they take it with a face on. Properly under and they
+         are gone. */
+      if(amount >= cand.floor * 0.95) return hire(amount, Math.max(38, moraleAt - 22),
+        'They took it, and they will remember it.');
+      walk();
+    };
+
+    const acts = [];
+    if(full){
+      acts.push({ label:'No room for them',
+        detail: HS.OFFICES[S.office||0].name + ' seats ' + seats, disabled:true, why:'Nowhere to put them' });
+    } else {
+      acts.push({ label:'Meet their number', detail:'They start keen',
+        cost: HS.money(cand.ask) + ' a week',
+        disabled: S.cash < cand.ask * 2, why:'You cannot cover two weeks of that',
+        onClick:()=>hire(cand.ask, 86, 'They were not expecting that.') });
+      acts.push({ label:'Offer ' + HS.money(fair), detail:'What you make them worth',
+        cost: HS.money(fair) + ' a week',
+        disabled: S.cash < fair * 2, why:'You cannot cover two weeks of that',
+        onClick:()=>offer(fair, 74) });
+      acts.push({ label:'Offer ' + HS.money(low), detail:'Try it on. They may walk',
+        cost: HS.money(low) + ' a week', tone:'red',
+        disabled: S.cash < low * 2, why:'You cannot cover two weeks of that',
+        onClick:()=>offer(low, 60) });
+    }
+    acts.push({ label:'Let them go', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } });
+
     ui.modal({
       title:'SOMEONE WORTH A CONVERSATION',
-      body:'<p>You get talking to somebody ' + src.name + '.</p>' +
+      sub: src.name.toUpperCase(),
+      body:'<p>You get talking to somebody ' + src.name + '. Half an hour is not long enough ' +
+        'to know anybody, and half an hour is what you have.</p>' +
         '<p class="pbody"><b>' + cand.name + '</b></p>' +
         tallies([
-          ['Tape', cand.tape], ['Screen', cand.screen], ['Nerve', cand.nerve],
-          ['Wants', HS.money(cand.wage) + ' a week']
+          ['Tape', band('tape')], ['Screen', band('screen')], ['Nerve', band('nerve')],
+          ['Asking', HS.money(cand.ask) + ' a week']
         ]) +
-        (full ? '<p class="pbody" style="color:var(--red)">You have nowhere to put them. ' +
-                HS.OFFICES[S.office||0].name + ' seats ' + seats + '.</p>' : ''),
-      actions:[
-        { label: full ? 'No room for them' : 'Take them on',
-          disabled: full || S.cash < cand.wage * 2,
-          onClick:()=>{
-            ui.closeModal();
-            S.team = HS.teamOf(S); S.team.push(cand);
-            HS.Audio.levelUp();
-            ui.toast(cand.name + ' is on the payroll.', 'good');
-            ui.syncHud(); HS.save(S);
-          } },
-        { label:'Let them go', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }
-      ]
+        '<p class="pbody dim">You are reading them, not measuring them. Skill and a name on ' +
+        'the street narrow that down; nerve you will not really know until a day goes against ' +
+        'them.</p>',
+      actions: acts
     });
-  };
+  }
 
   G.buyOffice = function(to){
     const S = G.S;
@@ -535,8 +585,9 @@ HS.Game = function(){
     const rows = team.map(e =>
       '<button class="act" data-emp="' + e.id + '">' +
         '<span class="act-main">' + e.name + '  <span class="dim">' + HS.ROLES[e.role].name + '</span></span>' +
-        '<span class="act-detail">Tape ' + e.tape + ' · Screen ' + e.screen + ' · Nerve ' + e.nerve +
-          ' · morale ' + Math.round(e.morale) + '</span>' +
+        '<span class="act-detail">Tape ' + HS.statText(e,'tape') + ' · Screen ' + HS.statText(e,'screen') +
+          ' · Nerve ' + HS.statText(e,'nerve') + ' · morale ' + Math.round(e.morale) +
+          (e.known ? '' : ' · <span class="dim">not yet tested</span>') + '</span>' +
         '<span class="act-cost">' + HS.money(e.wage) + ' a week</span>' +
       '</button>').join('');
     ui.modal({
@@ -558,13 +609,16 @@ HS.Game = function(){
     ui.modal({
       title:e.name.toUpperCase(), sub:HS.RECRUIT_SOURCES[e.from].name.toUpperCase(),
       body: tallies([
-        ['Tape', e.tape], ['Screen', e.screen], ['Nerve', e.nerve],
+        ['Tape', HS.statText(e,'tape')], ['Screen', HS.statText(e,'screen')],
+        ['Nerve', HS.statText(e,'nerve')],
         ['Morale', Math.round(e.morale)], ['Wage', HS.money(e.wage) + '/wk']
-      ]) + (canStream ? '' : '<p class="pbody dim">You need an office before anyone can front the channel.</p>'),
+      ]) + (e.known ? '' : '<p class="pbody dim">Still an estimate. A losing week on the desks ' +
+            'is what settles it.</p>') +
+        (canStream ? '' : '<p class="pbody dim">You need an office before anyone can front the channel.</p>'),
       actions:[
         { label:'Put them on the book', detail:HS.ROLES.trader.blurb,
           onClick:()=>{ e.role = 'trader'; ui.closeModal(); G.openRoster(); } },
-        { label:'Give them the channel', detail:'Screen ' + e.screen + ' decides how it grows',
+        { label:'Give them the channel', detail:'Screen ' + HS.statText(e,'screen') + ' decides how it grows',
           disabled: !canStream,
           onClick:()=>{
             HS.teamOf(S).forEach(x => { if(x.role === 'streamer') x.role = 'trader'; });

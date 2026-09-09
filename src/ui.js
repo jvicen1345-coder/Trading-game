@@ -106,12 +106,30 @@ HS.UI = function(game){
     const m = $('modal');
     $('modalTitle').textContent = opts.title || '';
     $('modalTitle').className = 'modal-title ' + (opts.tone || '');
+    $('modalSub').textContent = opts.sub || '';
+    $('modalSub').style.display = opts.sub ? '' : 'none';
     $('modalBody').innerHTML = opts.body || '';
+
+    const list = opts.actions || [{ label:'OK', onClick:()=>U.closeModal() }];
     const acts = $('modalActions');
     acts.innerHTML = '';
-    (opts.actions || [{ label:'OK', onClick:()=>U.closeModal() }]).forEach(a => {
-      const b = HS.el('button', 'btn' + (a.ghost ? ' ghost' : ''), a.label);
-      b.addEventListener('click', () => { HS.Audio.click(); a.onClick(); });
+    /* A choice that carries a price or a reason it is closed to you gets the
+       same block a panel action does. A plain yes or no stays a button. */
+    const rich = list.some(a => a.detail || a.cost || a.disabled);
+    acts.className = rich ? 'acts' : '';
+    list.forEach(a => {
+      if(!rich){
+        const b = HS.el('button', 'btn' + (a.ghost ? ' ghost' : ''), a.label);
+        b.addEventListener('click', () => { HS.Audio.click(); a.onClick(); });
+        acts.appendChild(b);
+        return;
+      }
+      const b = HS.el('button', 'act' + (a.disabled ? ' locked' : '') + (a.tone ? ' ' + a.tone : ''));
+      b.innerHTML = '<span class="act-main">' + a.label + '</span>' +
+        (a.detail ? '<span class="act-detail">' + a.detail + '</span>' : '') +
+        (a.cost ? '<span class="act-cost">' + a.cost + '</span>' : '') +
+        (a.disabled && a.why ? '<span class="act-why">' + a.why + '</span>' : '');
+      if(!a.disabled) b.addEventListener('click', () => { HS.Audio.click(); a.onClick(); });
       acts.appendChild(b);
     });
     m.classList.add('show');

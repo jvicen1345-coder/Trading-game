@@ -159,6 +159,28 @@ HS.RECRUIT_SOURCES = {
   exchange: { name:'off the floor',    tape:16, screen:-10, nerve:8 }
 };
 
+/* How well you can read a stranger. Skill is the tape and reputation is the
+   room, and both of them are how you tell talent from a good afternoon. Nerve
+   is always the hardest, because nerve only shows on a bad day. */
+HS.readSpread = function(S, stat){
+  const base = HS.clamp(27 - S.skill * 0.19 - S.rep * 0.11, 3, 27);
+  return Math.round(base * (stat === 'nerve' ? 1.9 : 1));
+};
+
+/* The band you are shown, which is the truth blurred by how good you are at
+   this. It is drawn once and kept, so staring at somebody does not resample
+   them. */
+function estimate(S, e, stat){
+  const spread = HS.readSpread(S, stat);
+  const off = Math.round((Math.random() - 0.5) * spread);
+  const mid = HS.clamp(e[stat] + off, 3, 99);
+  return { lo: Math.round(HS.clamp(mid - spread/2, 1, 99)),
+           hi: Math.round(HS.clamp(mid + spread/2, 2, 100)), mid: Math.round(mid) };
+}
+
+/* What somebody is actually worth a week, given what they can actually do. */
+HS.recruitWorth = e => Math.round((e.tape * 26 + e.screen * 20 + e.nerve * 14) * 0.9);
+
 /* Candidate quality tracks your standing. A nobody attracts nobody. */
 HS.rollRecruit = function(S, source){
   const src = HS.RECRUIT_SOURCES[source];
@@ -172,10 +194,26 @@ HS.rollRecruit = function(S, source){
     tape:   Math.round(HS.clamp(roll() + src.tape, 5, 96)),
     screen: Math.round(HS.clamp(roll() + src.screen, 5, 96)),
     nerve:  Math.round(HS.clamp(roll() + src.nerve, 5, 96)),
-    morale: 74, role:'trader'
+    morale: 74, role:'trader', known:false
   };
-  e.wage = Math.round((e.tape * 26 + e.screen * 20 + e.nerve * 14) * 0.9);
+  e.worth = HS.recruitWorth(e);
+  e.wage = e.worth;
+  /* They open above what they are worth, and they have a number below which
+     they walk. A name on the street brings that number down. */
+  e.ask   = Math.round(e.worth * (1.16 + Math.random() * 0.26));
+  e.floor = Math.round(e.worth * (0.86 + Math.random() * 0.14) *
+                       (1 - Math.min(0.18, S.rep / 400)));
+  e.est = { tape: estimate(S, e, 'tape'), screen: estimate(S, e, 'screen'),
+            nerve: estimate(S, e, 'nerve') };
   return e;
+};
+
+/* What you see on a card: the band while they are a stranger, the number once
+   a bad week has told you the truth. */
+HS.statText = function(e, stat){
+  if(e.known || !e.est) return String(e[stat]);
+  const b = e.est[stat];
+  return b.lo + ' to ' + b.hi;
 };
 
 HS.teamSeats  = S => HS.OFFICES[S.office || 0].seats;
@@ -427,6 +465,15 @@ HS.rollDay = function(S, ev){
         desk += S.cash * 0.012 * edge * (0.4 + Math.random() * 1.5) -
                 S.cash * 0.006 * (1 - e.nerve / 100);
       });
+      /* A week that went against them is the only real interview. Whatever you
+         thought you were buying, now you know. */
+      if(desk < 0){
+        const surprised = HS.teamOf(S).filter(e => !e.known);
+        surprised.forEach(e => { e.known = true; });
+        if(surprised.length) ev.push({ kind:'', text:'A bad week on the desks. You find out ' +
+          'what ' + (surprised.length === 1 ? surprised[0].name + ' is' : 'your people are') +
+          ' actually made of.' });
+      }
       if(HS.tradersOf(S).length){
         desk = Math.round(desk);
         S.cash += desk;

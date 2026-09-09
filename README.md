@@ -155,6 +155,19 @@ what they are: the channel sends you people who can talk, the Exchange sends
 you people who can trade, the bar sends you a bit of both. Everyone has
 **Tape**, **Screen** and **Nerve**, and none of them is good at all three.
 
+You do not get to see those numbers. You get a range, and how wide it is
+depends on you: a new Funded Trader reads tape to within about ten points and
+nerve to within twenty, while somebody with skill and a name on the street
+reads both to within two or three. Nerve is always the vaguest, because nerve
+only shows on a bad day, and a losing week on the desks is what finally tells
+you what you bought.
+
+Then you haggle. They open about thirty percent above what they are worth, and
+your counter is worked out from **what you think they are worth**, not what
+they are worth. Meet their number and they start keen. Offer what you make them
+worth and they usually take it. Try it on and they may walk, which is how a bad
+read costs you somebody good.
+
 Then the address. A vacant floor becomes **The Back Room** above a laundrette,
 and eventually **The High-Rise**, forty-one storeys up and in sight of the firm
 that did not want you. Once you have desks you hand the channel to whoever can
