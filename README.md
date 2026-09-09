@@ -187,6 +187,17 @@ worked out from **what you think they are worth**. Meet their number and they
 start keen. Offer what you make them worth and they usually take it. Try it on
 and they may walk, which is how a bad read costs you somebody good.
 
+**The first two work for nothing.** Before there is an office there is no
+payroll, so the two people you can fit around a bedroom are not employed by
+you, they are taking a chance on you. It costs you nothing and it buys you
+nothing: a bad week and they are simply not there on Monday, where somebody on
+a wage would have grumbled and stayed. What they give you instead is **trust**,
+earned on the weeks that go well, and trust is what makes them cheap to teach.
+At full trust a training session takes about a third of the effort.
+
+Taking the lease ends that. On the Monday after you sign, the people who had
+been doing it for nothing start being paid.
+
 Then the address. A vacant floor becomes **The Back Room** above a laundrette,
 and eventually **The High-Rise**, forty-one storeys up and in sight of the firm
 that did not want you. Once you have desks you hand the channel to whoever can

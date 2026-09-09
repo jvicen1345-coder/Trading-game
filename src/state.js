@@ -239,7 +239,8 @@ HS.metNotHired = S => (S.met || []).filter(id => !HS.hasHired(S, id) && !HS.isLo
 HS.employ = function(c, wage, morale){
   return { id:c.id, name:c.name, tier:c.tier, from:c.from, special:c.special,
            tape:c.tape, screen:c.screen, nerve:c.nerve,
-           wage:wage, morale:morale, role:'trader', known:false, trained:0, talked:0 };
+           wage:wage, morale:morale, trust:50, role:'trader', known:false,
+           trained:0, talked:0 };
 };
 
 /* Does anybody on the payroll carry this? */
@@ -288,10 +289,20 @@ HS.statText = function(e, stat){
 };
 
 HS.teamSeats  = S => Math.min(HS.TEAM_CAP, HS.OFFICES[S.office || 0].seats);
+
+/* Before there is an office there is no payroll. The first two are not working
+   for you, they are taking a chance on you, and the terms of that are simple:
+   nothing up front, and they are gone the moment it stops looking like it will
+   work. What they give you instead of loyalty is trust, which is earned on the
+   weeks that go well and is what makes them cheap to teach. */
+HS.isUnpaid   = S => !(S.office > 0);
+HS.trustOf    = e => e.trust == null ? 50 : e.trust;
+HS.trainMult  = e => HS.clamp(1.2 - HS.trustOf(e) / 110, 0.35, 1.2);
+HS.quitFloor  = S => HS.isUnpaid(S) ? 25 : 6;
 HS.teamOf     = S => S.team || [];
 HS.streamerOf = S => HS.teamOf(S).find(e => e.role === 'streamer') || null;
 HS.tradersOf  = S => HS.teamOf(S).filter(e => e.role === 'trader');
-HS.teamWages  = S => HS.teamOf(S).reduce((n, e) => n + e.wage, 0);
+HS.teamWages  = S => HS.isUnpaid(S) ? 0 : HS.teamOf(S).reduce((n, e) => n + e.wage, 0);
 
 /* What each of them is actually worth having around. */
 HS.deskMul   = S => (HS.teamHas(S,'oldschool') ? 1.25 : 1) * (HS.teamHas(S,'ruthless') ? 1.33 : 1);
@@ -535,8 +546,10 @@ HS.rollDay = function(S, ev){
        their tape read; morale decides whether they bothered. */
     if(HS.teamOf(S).length){
       const wages = HS.teamWages(S) + HS.OFFICES[S.office || 0].upkeep;
-      S.cash -= wages;
-      ev.push({ kind:'bill', text:'Payroll and upkeep. ' + HS.money(wages) + ' out.' });
+      if(wages > 0){
+        S.cash -= wages;
+        ev.push({ kind:'bill', text:'Payroll and upkeep. ' + HS.money(wages) + ' out.' });
+      }
       let desk = 0;
       HS.tradersOf(S).forEach(e => {
         const heart = 0.45 + (e.morale / 100) * 0.75;
@@ -574,15 +587,26 @@ HS.rollDay = function(S, ev){
       }
       /* Nobody works hard for somebody who never comes in. */
       const seen = S.day - (S.checkedIn || 0) <= HS.WEEK_DAYS + 1;
+      const unpaid = HS.isUnpaid(S);
+      const wentWell = desk >= 0 && S.weekPnl >= 0;
       HS.teamOf(S).forEach(e => {
-        if(!seen && e.special === 'grinder') return;      /* Teddy does not mind */
-        e.morale = HS.clamp(e.morale + (seen ? 3 : -11), 0, 100);
+        if(!(!seen && e.special === 'grinder'))            /* Teddy does not mind */
+          e.morale = HS.clamp(e.morale + (seen ? 3 : (unpaid ? -17 : -11)), 0, 100);
+        /* Working for nothing on a week that went badly is a short conversation
+           with yourself. Working for nothing on a week that went well is how
+           people come to believe in somebody. */
+        const move = wentWell ? (unpaid ? 9 : 4) : (unpaid ? -12 : -4);
+        e.trust = HS.clamp(HS.trustOf(e) + move, 0, 100);
       });
-      const gone = HS.teamOf(S).filter(e => e.morale <= 6);
+      const floor = HS.quitFloor(S);
+      const gone = HS.teamOf(S).filter(e => e.morale <= floor ||
+                                            (unpaid && HS.trustOf(e) <= 12));
       if(gone.length){
-        S.team = HS.teamOf(S).filter(e => e.morale > 6);
+        S.team = HS.teamOf(S).filter(e => gone.indexOf(e) < 0);
         ev.push({ kind:'bad', text: gone.map(e => e.name).join(' and ') +
-                  ' walked. Nobody had spoken to them in weeks.' });
+                  (unpaid ? ' stopped turning up. They were never on a payroll, and nothing '
+                          + 'was keeping them.'
+                          : ' walked. Nobody had spoken to them in weeks.') });
       }
     }
 

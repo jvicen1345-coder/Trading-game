@@ -551,6 +551,12 @@ HS.Game = function(){
       acts.push({ label:'No seat for them', disabled:true,
         detail: HS.OFFICES[S.office||0].name + ' seats ' + seats + ' and you have ' +
                 HS.teamOf(S).length, why:'Let somebody go first, or take a bigger floor' });
+    } else if(HS.isUnpaid(S)){
+      /* No office, no payroll, nothing to negotiate. You are asking somebody to
+         work on the promise of a firm that does not exist yet. */
+      acts.push({ label:'Ask them to come in on it', detail:'No wage until there is an office',
+        cost:'nothing, which is the problem',
+        onClick:()=>hire(cand.worth, 70, 'They are in, for now.') });
     } else {
       acts.push({ label:'Meet their number', detail:'They start keen',
         cost: HS.money(cand.ask) + ' a week',
@@ -581,6 +587,10 @@ HS.Game = function(){
           (c.tier === 'basic' ? 'Train them at the office and they will go whichever way you point them.'
            : c.tier === 'sharp' ? 'You would have to talk them round before any of it took.'
            : 'Nothing you say will move them, and they do not need moving.') + '</p>' +
+        (HS.isUnpaid(S) ? '<p class="pbody y">You have no office and no payroll. They would be ' +
+          'coming in on nothing but your word, which costs you nothing and buys you nothing: ' +
+          'a bad week and they are simply not there on Monday. Weeks that go well build trust, ' +
+          'and trust is what makes them cheap to teach.</p>' : '') +
         (rival && !rivalOn ? '<p class="pbody" style="color:var(--red)">Will not work in the ' +
           'same building as <b>' + rival.name + '</b>. Take one and the other is gone.</p>' : ''),
       actions: acts
@@ -618,6 +628,7 @@ HS.Game = function(){
           ' · ' + HS.TIERS[e.tier].name + '</span></span>' +
         '<span class="act-detail">Tape ' + HS.statText(e,'tape') + ' · Screen ' + HS.statText(e,'screen') +
           ' · Nerve ' + HS.statText(e,'nerve') + ' · morale ' + Math.round(e.morale) +
+          ' · trust ' + Math.round(HS.trustOf(e)) +
           (e.known ? '' : ' · <span class="dim">not yet tested</span>') + '</span>' +
         '<span class="act-cost">' + HS.money(e.wage) + ' a week</span>' +
       '</button>').join('');
@@ -656,7 +667,8 @@ HS.Game = function(){
       body: tallies([
         ['Tape', HS.statText(e,'tape')], ['Screen', HS.statText(e,'screen')],
         ['Nerve', HS.statText(e,'nerve')],
-        ['Morale', Math.round(e.morale)], ['Wage', HS.money(e.wage) + '/wk']
+        ['Morale', Math.round(e.morale)], ['Trust', Math.round(HS.trustOf(e))],
+        ['Wage', HS.isUnpaid(G.S) ? 'nothing yet' : HS.money(e.wage) + '/wk']
       ]) + (e.known ? '' : '<p class="pbody dim">Still an estimate. A losing week on the desks ' +
             'is what settles it.</p>') +
         (canStream ? '' : '<p class="pbody dim">You need an office before anyone can front the channel.</p>'),
@@ -694,7 +706,7 @@ HS.Game = function(){
     const e = HS.teamOf(S).find(x => x.id === id);
     if(!e) return;
     const tier = HS.TIERS[e.tier];
-    const price = HS.energyCost(S, HS.ENERGY.classB);
+    const price = Math.max(2, Math.round(HS.energyCost(S, HS.ENERGY.classB) * HS.trainMult(e)));
     const rate = 3.4 * tier.train * (0.7 + S.skill / 140);
     const stuck = e.tier === 'sharp' && e.talked < 3;
 
@@ -725,8 +737,13 @@ HS.Game = function(){
       title:'TRAINING ' + e.name.toUpperCase(), sub:tier.name.toUpperCase(),
       body: tallies([
         ['Tape', HS.statText(e,'tape')], ['Screen', HS.statText(e,'screen')],
-        ['Nerve', HS.statText(e,'nerve')], ['Sessions put in', e.trained || 0]
+        ['Nerve', HS.statText(e,'nerve')],
+        ['Trust', Math.round(HS.trustOf(e)) + ' of 100'],
+        ['Sessions put in', e.trained || 0]
       ]) +
+      '<p class="pbody dim">Somebody who believes in this takes less out of you to teach. ' +
+      'At ' + Math.round(HS.trustOf(e)) + ' trust a session costs ' +
+      Math.round(HS.trainMult(e) * 100) + '% of the usual.</p>' +
       '<p class="pbody dim">' + (tier.train === 0
         ? 'You are not going to teach this person anything. That is rather the point of them.'
         : e.tier === 'sharp'
@@ -744,7 +761,7 @@ HS.Game = function(){
     const e = HS.teamOf(S).find(x => x.id === id);
     if(!e) return;
     G.spendTime(2);
-    HS.addEnergy(S, -HS.energyCost(S, HS.ENERGY.classB));
+    HS.addEnergy(S, -Math.max(2, Math.round(HS.energyCost(S, HS.ENERGY.classB) * HS.trainMult(e))));
     const before = e[stat];
     e[stat] = Math.min(99, e[stat] + rate);
     e.trained = (e.trained || 0) + 1;

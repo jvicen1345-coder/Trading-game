@@ -67,6 +67,9 @@ vendor/         three.js r128, vendored so the game runs offline
   five at a time. Five are trainable, three need talking round three times
   before training takes, two cannot be trained and cannot both be hired. Each
   carries a `special` that other modules look up by name.
+- With no office there is no payroll: the first two seats cost nothing, quit at
+  a much higher morale floor, and build `trust` on good weeks which discounts
+  training. Taking the lease starts the wage bill.
 - Candidate stats are never shown exactly. `HS.readCandidate` blurs them into a
   band whose width comes from skill and reputation, and a losing week on the
   desks sets `known` and reveals the truth.
