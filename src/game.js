@@ -121,7 +121,9 @@ HS.Game = function(){
   G.isLandmarkActive = function(id){
     const S = G.S;
     if(id.startsWith('home_')) return HS.HOUSING[S.housing].landmark === id;
-    if(id === 'firm') return S.path === 'fund' || !!S.flags.kadeSeen;
+    /* The vacant floor shows up the moment building on it is imaginable. */
+    if(id === 'firm') return S.path === 'fund' || !!S.flags.kadeSeen ||
+                             (S.path === 'solo' && S.rank >= 3);
     if(id === 'sec') return S.heat >= 20;
     return true;
   };
@@ -318,6 +320,7 @@ HS.Game = function(){
     if(disturbed) ui.toast(disturbed, 'bad');
     if(S.day > before) powerCutCheck();
     if(evictionDue()){ checkFail(); eviction(); return; }
+    if(HS.yoonDue(S)){ yoonEncounter(); return; }
     if(S.day > before) tutorMaybe(['sleep1','sleep2','sleep3']);
     if(S.tutorial.step >= TUTORIAL.length && !S.tutorial.done) endTutorial();
     if(!S.path && S.day > 5) offerWeekOneChoice();
@@ -466,6 +469,181 @@ HS.Game = function(){
       } }]
     });
     checkFail();
+  };
+
+  /* ================= the firm ================= */
+  G.recruit = function(source){
+    const S = G.S;
+    const cand = HS.rollRecruit(S, source);
+    const src = HS.RECRUIT_SOURCES[source];
+    G.spendTime(2);
+    HS.addEnergy(S, -HS.energyCost(S, HS.ENERGY.network));
+    const seats = HS.teamSeats(S);
+    const full = HS.teamOf(S).length >= seats;
+    ui.modal({
+      title:'SOMEONE WORTH A CONVERSATION',
+      body:'<p>You get talking to somebody ' + src.name + '.</p>' +
+        '<p class="pbody"><b>' + cand.name + '</b></p>' +
+        tallies([
+          ['Tape', cand.tape], ['Screen', cand.screen], ['Nerve', cand.nerve],
+          ['Wants', HS.money(cand.wage) + ' a week']
+        ]) +
+        (full ? '<p class="pbody" style="color:var(--red)">You have nowhere to put them. ' +
+                HS.OFFICES[S.office||0].name + ' seats ' + seats + '.</p>' : ''),
+      actions:[
+        { label: full ? 'No room for them' : 'Take them on',
+          disabled: full || S.cash < cand.wage * 2,
+          onClick:()=>{
+            ui.closeModal();
+            S.team = HS.teamOf(S); S.team.push(cand);
+            HS.Audio.levelUp();
+            ui.toast(cand.name + ' is on the payroll.', 'good');
+            ui.syncHud(); HS.save(S);
+          } },
+        { label:'Let them go', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }
+      ]
+    });
+  };
+
+  G.buyOffice = function(to){
+    const S = G.S;
+    const o = HS.OFFICES[to];
+    S.cash -= o.price; S.office = to;
+    refreshLandmarks(); HS.Audio.levelUp();
+    ui.modal({
+      title:'YOU TAKE THE LEASE', tone:'good',
+      body:'<p><b>' + o.name + '</b></p><p>' + o.desc + '</p>' +
+        tallies([['Seats', o.seats], ['Upkeep', HS.money(o.upkeep) + ' a week']]) +
+        (to === 1 ? '<p class="pbody y">You can hand the channel to somebody now. Pick whoever ' +
+                    'can hold a room, and go back to trading.</p>' : ''),
+      actions:[{ label:'Good', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }]
+    });
+  };
+
+  /* The roster. Who trades, who fronts the channel, and who is dead weight. */
+  G.openRoster = function(){
+    const S = G.S;
+    const team = HS.teamOf(S);
+    if(!team.length){
+      ui.modal({ title:'NOBODY WORKS HERE YET',
+        body:'<p>Find people at the bar, on the floor of the Exchange, or through the channel.</p>',
+        actions:[{ label:'Right', onClick:()=>ui.closeModal() }] });
+      return;
+    }
+    const rows = team.map(e =>
+      '<button class="act" data-emp="' + e.id + '">' +
+        '<span class="act-main">' + e.name + '  <span class="dim">' + HS.ROLES[e.role].name + '</span></span>' +
+        '<span class="act-detail">Tape ' + e.tape + ' · Screen ' + e.screen + ' · Nerve ' + e.nerve +
+          ' · morale ' + Math.round(e.morale) + '</span>' +
+        '<span class="act-cost">' + HS.money(e.wage) + ' a week</span>' +
+      '</button>').join('');
+    ui.modal({
+      title:'YOUR PEOPLE', sub: HS.OFFICES[S.office||0].name.toUpperCase() + ' · ' +
+        team.length + ' of ' + HS.teamSeats(S) + ' seats',
+      body:'<p class="pbody dim">Tap somebody to change what they do.</p><div class="acts">' + rows + '</div>',
+      actions:[{ label:'Done', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }]
+    });
+    document.querySelectorAll('#modalBody [data-emp]').forEach(btn => {
+      btn.addEventListener('click', () => employeeSheet(btn.dataset.emp));
+    });
+  };
+
+  function employeeSheet(id){
+    const S = G.S;
+    const e = HS.teamOf(S).find(x => x.id === id);
+    if(!e) return;
+    const canStream = (S.office || 0) >= 1;
+    ui.modal({
+      title:e.name.toUpperCase(), sub:HS.RECRUIT_SOURCES[e.from].name.toUpperCase(),
+      body: tallies([
+        ['Tape', e.tape], ['Screen', e.screen], ['Nerve', e.nerve],
+        ['Morale', Math.round(e.morale)], ['Wage', HS.money(e.wage) + '/wk']
+      ]) + (canStream ? '' : '<p class="pbody dim">You need an office before anyone can front the channel.</p>'),
+      actions:[
+        { label:'Put them on the book', detail:HS.ROLES.trader.blurb,
+          onClick:()=>{ e.role = 'trader'; ui.closeModal(); G.openRoster(); } },
+        { label:'Give them the channel', detail:'Screen ' + e.screen + ' decides how it grows',
+          disabled: !canStream,
+          onClick:()=>{
+            HS.teamOf(S).forEach(x => { if(x.role === 'streamer') x.role = 'trader'; });
+            e.role = 'streamer'; S.stream.delegated = true;
+            ui.closeModal(); G.openRoster();
+          } },
+        { label:'Let them go', tone:'red', detail:'No notice, no goodwill',
+          onClick:()=>{
+            S.team = HS.teamOf(S).filter(x => x.id !== e.id);
+            if(!HS.streamerOf(S)) S.stream.delegated = false;
+            HS.addRep(S, -1.5);
+            ui.closeModal(); G.openRoster();
+          } },
+        { label:'Back', onClick:()=>{ ui.closeModal(); G.openRoster(); } }
+      ]
+    });
+  }
+
+  G.checkIn = function(){
+    const S = G.S;
+    G.spendTime(1.5);
+    HS.addEnergy(S, -HS.energyCost(S, HS.ENERGY.round));
+    S.checkedIn = S.day;
+    HS.teamOf(S).forEach(e => { e.morale = HS.clamp(e.morale + 9, 0, 100); });
+    const sm = HS.streamerOf(S);
+    HS.Audio.cash();
+    ui.modal({
+      title:'YOU WALK THE FLOOR', tone:'good',
+      body:'<p>You go desk to desk. Somebody wants a bigger screen, somebody else wants to know ' +
+           'whether the name on the door is going to mean anything.</p>' +
+        (sm ? '<p class="pbody">' + sm.name + ' shows you the numbers from the channel and waits ' +
+              'to be told they did well.</p>' : '') +
+        tallies([
+          ['On the payroll', HS.teamOf(S).length],
+          ['Weekly wages', HS.money(HS.teamWages(S))],
+          ['Morale', Math.round(HS.teamOf(S).reduce((n,e)=>n+e.morale,0) / Math.max(1,HS.teamOf(S).length))]
+        ]),
+      actions:[{ label:'Back to it', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }]
+    });
+  };
+
+  /* ================= Yoon Suk-Yield ================= */
+  function yoonEncounter(){
+    const S = G.S;
+    S.blue.met = true; S.blue.skill = 12;
+    HS.Audio.levelUp();
+    ui.modal({
+      title:'A MESSAGE FROM SEOUL',
+      body:'<p>Somebody has been watching every session you have put out, at four in the morning ' +
+           'his time, for months. He finally writes, and the message is nine hundred words long ' +
+           'and mostly about what you are doing wrong.</p>' +
+           '<p><b>Yoon Suk-Yield</b> trades a system nobody here uses. He offers to teach it, ' +
+           'on the condition you stop calling it a strategy.</p>' +
+           '<p class="pbody y">The Blue House reads the tape far better than you can. It also ' +
+           'refuses to let you size into anything, so it will never give your audience a clip.</p>' +
+           '<p class="pbody dim">Work through his notes at home. Below <b>' + HS.BLUE.usable +
+           '</b> you will trade it worse than trading blind.</p>',
+      actions:[{ label:'Start reading', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }]
+    });
+  }
+
+  G.studyBlue = function(){
+    const S = G.S;
+    G.spendTime(2);
+    HS.addEnergy(S, -HS.energyCost(S, HS.ENERGY.classB));
+    const gain = 2.2 + S.skill * 0.03;
+    S.blue.skill = Math.min(100, S.blue.skill + gain);
+    HS.Audio.levelUp();
+    const ready = HS.blueReady(S);
+    ui.toast('Blue House ' + S.blue.skill.toFixed(0) + '.' +
+             (ready ? ' You can trade it now.' : ''), ready ? 'good' : '');
+    ui.syncHud(); HS.save(S);
+  };
+
+  G.toggleBlue = function(){
+    const S = G.S;
+    S.blue.on = !S.blue.on;
+    HS.Audio.click();
+    ui.toast(S.blue.on ? 'Trading the Blue House. Small size, better reads.'
+                       : 'Back to your own system.', '');
+    ui.syncHud(); HS.save(S);
   };
 
   /* ================= the weekend ================= */
@@ -863,11 +1041,18 @@ HS.Game = function(){
     HS.addEnergy(S, -HS.energyCost(S, HS.ENERGY.review));
     S.reviewedToday = true;
     const rested = S.rest === 2 ? 6 : S.rest === 0 ? -6 : 0;
-    const confidence = Math.round(HS.clamp(50 + S.skill*0.42 + HS.reviewBonus(S) +
-                                           HS.roomBonus(S,'review') + rested, 50, 100));
+    /* Yoon's method is a better read or a worse one, with nothing in between:
+       below the threshold you are following rules you do not understand. */
+    const blue = HS.usingBlue(S) ? HS.BLUE.accuracy
+               : (HS.metYoon(S) && S.blue.on) ? -18 : 0;
+    const raw = 50 + S.skill*0.42 + HS.reviewBonus(S) + HS.roomBonus(S,'review') + rested + blue;
+    const confidence = Math.round(HS.usingBlue(S)
+      ? HS.clamp(raw, 30, HS.BLUE.ceiling)      /* better, never certain */
+      : HS.clamp(raw, 30, 100));
     const truth = Math.random() < 0.5 ? 1 : -1;
     const shown = (Math.random()*100 < confidence) ? truth : -truth;
     S.edge = { day:S.day, dir:truth, shown, confidence };
+    if(HS.metYoon(S) && S.blue.on) S.blue.skill = Math.min(100, S.blue.skill + 0.8);
     HS.Audio.levelUp();
     ui.modal({
       title: shown > 0 ? 'GOLDEN CROSS' : 'DEATH CROSS',

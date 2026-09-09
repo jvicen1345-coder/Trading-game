@@ -63,3 +63,9 @@ vendor/         three.js r128, vendored so the game runs offline
 - Housing is rented at the bottom of the ladder and bought at the top. The
   cheap rungs carry a per-night chance of broken sleep and a per-morning
   chance of a power cut that cancels the session outright.
+- The solo path builds a firm: recruits with Tape, Screen and Nerve, an office
+  ladder, a delegated channel, and a four quarter contest against Ladder and
+  Co. A quarter is two game weeks and a losing one resets the streak.
+- The Blue House is a second trading system, gated behind its own skill. It
+  raises the chart read and caps position size, and your own skill eventually
+  overtakes it. Both systems share the same market code.

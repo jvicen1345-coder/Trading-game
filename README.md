@@ -14,7 +14,8 @@ game hands you the controls and asks you to end the week green.
 On Friday of week one you choose:
 
 - **Day Trader.** Go it alone from a bedroom. No salary, no boss, no floor to
-  hide on. Every dollar is yours and so is every hole.
+  hide on. Every dollar is yours and so is every hole. It is the longer road,
+  and it ends somewhere the floor cannot follow.
 - **The Floor.** Take the junior seat and climb. A wage, a book that grows with
   your title, and a floor you might one day run.
 
@@ -68,6 +69,12 @@ margin, and only widens what you can write.
 
 A session **is** the 9:30 to 4:00 trading day, so getting to work early buys you
 screen time.
+
+Hit your daily target before three o'clock and the session stops to ask what
+you want to do about it. Bank the day and it is yours, or sit out the quiet
+middle and come back for the **power hour**, which runs hotter than the rest of
+the day in both directions. Anything you leave open rides the afternoon without
+you.
 
 ## How a week works
 
@@ -129,6 +136,45 @@ followers than a green one earns. Blow up on stream and they clip it.
 The catch is deliberate. An audience rewards size and drama rather than
 discipline, so the channel quietly pays you to take the trade you should not.
 
+## Building a firm
+
+The solo route is not really about trading alone. It is about proving the
+floor was wrong to be a floor, which means building one of your own out of
+people nobody else would hire.
+
+From **Funded Trader** you can recruit, and where you find somebody shapes
+what they are: the channel sends you people who can talk, the Exchange sends
+you people who can trade, the bar sends you a bit of both. Everyone has
+**Tape**, **Screen** and **Nerve**, and none of them is good at all three.
+
+Then the address. A vacant floor becomes **The Back Room** above a laundrette,
+and eventually **The High-Rise**, forty-one storeys up and in sight of the firm
+that did not want you. Once you have desks you hand the channel to whoever can
+carry a room and go back to trading, though you still have to walk the floor
+once a week. Nobody works hard for somebody who never comes in.
+
+## The quarter
+
+From Funded Trader, Ladder and Co. starts posting numbers whether you look or
+not. A quarter is two weeks. Beat them four quarters running and the game is
+over on your terms; lose one and the streak goes back to nothing. Their target
+is published in advance, so a bad quarter is always something you saw coming.
+
+## The Blue House
+
+Once your channel is real, somebody in Seoul who has watched every session you
+ever put out finally writes. **Yoon Suk-Yield** trades a system nobody here
+uses, and offers to teach it.
+
+It reads the tape far better than you do and it will not let you size into
+anything. Below a threshold you are following rules you do not understand and
+it is worse than trading blind; above it, it is a reliably better read that is
+never a certainty, and it caps you at a fraction of your usual size. Your own
+skill eventually overtakes it.
+
+Which makes it exactly the wrong tool for a man with an audience, and that is
+the point. You pick a system every session.
+
 **Four stats drive everything.** *Skill* sharpens what you can see on the tape
 and unlocks the greeks on the chain. *Reputation* opens promotions, raises money
 and shaves up to 40% off your commission. *Heat* is how interested the SEC is in
@@ -138,8 +184,9 @@ Skill and rank pay out as **perk points** across three constellations, the tape,
 risk and the street, and your room is yours to furnish, with every piece doing
 something small.
 
-Progress saves to `localStorage` automatically. A run to the top of either
-ladder is roughly ten to fifteen in-game weeks.
+Progress saves to `localStorage` automatically. The Floor takes around eight
+in-game weeks. The Day Trader takes around fifteen, because building a firm and
+then beating one takes longer than climbing inside somebody else's.
 
 ## Layout
 

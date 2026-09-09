@@ -84,6 +84,7 @@ HS.Locations = function(game){
       edge: s.edge && s.edge.day === s.day ? s.edge
            : (s.weekEdge && s.weekEdge.week === HS.weekOf(s.day) ? s.weekEdge : null),
       news: [22, 40], shock: 0.016 + s.rank * 0.003,
+      blue: HS.usingBlue(s),
       title: o.title, sub: o.sub
     }, res => {
       game.setPaused(false);
@@ -166,6 +167,10 @@ HS.Locations = function(game){
       why: s.blackout ? 'No power, no stream' : 'Nothing to stream with the market shut',
       onClick: () => { ui().closePanel(); game.toggleLive(); } });
 
+    if(s.rank >= 3){
+      out.push(recruitAction(s, 'channel', 'Answer the good messages',
+        'Somebody in your chat has been right all week'));
+    }
     out.push({ label:'Post the recap',
       detail:'Turn the people watching into people paying',
       cost:'1.5h · ' + HS.energyCost(s, HS.STREAM.postEnergy) + ' energy',
@@ -173,6 +178,33 @@ HS.Locations = function(game){
       why: st.followers < 20 ? 'Nobody is watching yet. Stream a few sessions first'
                              : 'Not enough energy',
       onClick: () => { ui().closePanel(); game.postRecap(); } });
+    return out;
+  }
+
+  /* Yoon's method, once he has found you. */
+  function blueActions(s){
+    if(!HS.metYoon(s)) return [];
+    const price = cost(s, E.classB);
+    const ready = HS.blueReady(s);
+    const out = [{
+      label:"Work through Yoon's notes",
+      detail:'Blue House ' + Math.round(s.blue.skill) + ' of ' + HS.BLUE.usable +
+             (ready ? ' · you can trade it' : ' needed before it is any use'),
+      cost:'2h · ' + price + ' energy',
+      disabled: s.energy < price,
+      why:'Not enough energy',
+      onClick: () => { ui().closePanel(); game.studyBlue(); }
+    }];
+    out.push({
+      label: s.blue.on ? 'Go back to your own system' : 'Trade the Blue House',
+      detail: s.blue.on
+        ? 'Your reads, your size, your mistakes'
+        : (ready ? 'Far better reads, and it caps you at ' +
+                   Math.round(HS.BLUE.sizeCap * 100) + '% size'
+                 : 'You do not understand it well enough yet'),
+      cost: s.blue.on ? 'running' : 'free',
+      onClick: () => { ui().closePanel(); game.toggleBlue(); }
+    });
     return out;
   }
 
@@ -205,6 +237,7 @@ HS.Locations = function(game){
         'HOME DESK', 'Your account · ' + HS.PATHS.solo.name));
       actions.push(HS.isWeekend(s.day) ? weekStudyAction(s) : reviewAction(s));
       channelActions(s).forEach(a => actions.push(a));
+      blueActions(s).forEach(a => actions.push(a));
     }
     if(s.cash < 3000 && (!s.path || s.path === 'solo')){
       actions.push({
@@ -325,8 +358,13 @@ HS.Locations = function(game){
              '<span class="v" style="color:' + (ch>=0?'var(--green)':'var(--red)') + '">' +
              t.price.toFixed(2) + '  ' + HS.pct(ch) + '</span></div>';
     }).join('');
+    const actions = [];
+    if(s.path === 'solo'){
+      actions.push(recruitAction(s, 'exchange', 'Poach somebody off the floor',
+        'They can read a tape. They cannot read a room'));
+    }
     return { title:'The Exchange', sub:'THE BOARD', accent:'#8B6BFF',
-             body: body + '<div class="tallies">' + rows + '</div>', actions:[] };
+             body: body + '<div class="tallies">' + rows + '</div>', actions };
   };
 
   /* ------------------------------- GYM -------------------------------- */
@@ -414,6 +452,21 @@ HS.Locations = function(game){
   };
 
   /* -------------------------------- BAR ------------------------------- */
+  /* You cannot build a firm out of people you never met. */
+  function recruitAction(s, source, label, detail){
+    const price = cost(s, E.network);
+    const seats = HS.teamSeats(s);
+    const full = HS.teamOf(s).length >= seats;
+    return {
+      label: label, detail: detail,
+      cost:'2h · ' + price + ' energy',
+      disabled: s.energy < price || full || s.rank < 3,
+      why: s.rank < 3 ? 'Nobody works for a man with no track record'
+         : full ? 'No seats left at ' + HS.OFFICES[s.office||0].name : 'Not enough energy',
+      onClick: () => { ui().closePanel(); game.recruit(source); }
+    };
+  }
+
   L.bar = function(){
     const s = S();
     const isOpen = s.hour >= 17 || s.hour < 3;
@@ -450,6 +503,10 @@ HS.Locations = function(game){
         disabled: !isOpen, why:'The bar is shut',
         onClick: () => { ui().closePanel(); game.callFavour(); }
       });
+    }
+    if(s.path === 'solo'){
+      actions.push(recruitAction(s, 'bar', 'Talk to somebody about a job',
+        'Half this room is between things. Some of them can trade'));
     }
     if(s.path){
       actions.push({
@@ -557,6 +614,55 @@ HS.Locations = function(game){
   /* ------------------------------- FUND ------------------------------- */
   L.firm = function(){
     const s = S();
+
+    /* On the solo route this building is the whole ambition: an address of
+       your own, in sight of the firm that did not want you. */
+    if(s.path === 'solo'){
+      const here = HS.OFFICES[s.office || 0];
+      const next = HS.OFFICES[(s.office || 0) + 1];
+      const r = s.rival;
+      const seen = s.day - (s.checkedIn || 0);
+      const body =
+        para(s.office ? here.desc
+          : 'An empty floor with a letting board in the window. You have walked past it ' +
+            'more times than you would admit to anybody.') +
+        '<div class="stats-grid">' +
+          stat('Office', here.name) +
+          stat('On the payroll', HS.teamOf(s).length + ' of ' + here.seats) +
+          stat('Weekly wages', HS.money(HS.teamWages(s) + here.upkeep)) +
+          stat('Quarters won', (r ? r.streak : 0) + ' of ' + HS.QUARTERS_TO_WIN,
+               r && r.streak >= 2 ? 'good' : '') +
+        '</div>' +
+        (r ? para('<span class="dim">Ladder and Co. are expected to return <b>' +
+              HS.pct(HS.rivalTarget(s)) + '</b> this quarter. You are ' +
+              (r.startWorth ? HS.pct((HS.netWorth(s) - r.startWorth) / r.startWorth) : 'flat') +
+              ' with ' + Math.max(0, HS.QUARTER_DAYS - (s.day - r.start)) + ' days to run.</span>')
+           : '');
+
+      const actions = [];
+      if(s.office){
+        actions.push({ label:'Walk the floor', detail:'Morale holds while somebody is paying attention',
+          cost:'1.5h · ' + cost(s, E.round) + ' energy',
+          disabled: s.energy < cost(s, E.round) || !HS.teamOf(s).length,
+          why: !HS.teamOf(s).length ? 'There is nobody here to talk to' : 'Not enough energy',
+          onClick: () => { ui().closePanel(); game.checkIn(); } });
+        if(seen > HS.WEEK_DAYS) actions[0].detail = 'Nobody has seen you in ' + seen + ' days';
+      }
+      actions.push({ label:'Your people', detail: HS.teamOf(s).length
+          ? 'Roles, morale, and who fronts the channel' : 'Nobody yet',
+        onClick: () => { ui().closePanel(); game.openRoster(); } });
+      if(next){
+        actions.push({ label:(s.office ? 'Move up to ' : 'Take ') + next.name,
+          detail: next.desc + ' · seats ' + next.seats + ' · upkeep ' + HS.money(next.upkeep) + '/wk',
+          cost: HS.money(next.price),
+          disabled: s.cash < next.price,
+          why:'You cannot cover it',
+          onClick: () => { ui().closePanel(); game.buyOffice(next.id); } });
+      }
+      return { title: s.office ? here.name : 'Vacant Floor', sub:'YOUR FIRM',
+               accent:'#E8B85C', body, actions };
+    }
+
     if(s.path !== 'fund'){
       return { title:'Kade Capital', sub:'BY APPOINTMENT', accent:'#FF5B67',
         body: para('Black glass, no signage, one name on the buzzer. Nobody goes in and nobody comes out while you are watching.') +

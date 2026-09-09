@@ -68,6 +68,7 @@ HS.Market.run = function(opts, done){
   M.bars.forEach(b => { b.o*=k; b.h*=k; b.l*=k; b.c*=k; });
   M.price = real; M.open = real;
   M.shock = 0; M.shockLeft = 0; M.tick = 0;
+  M.targetSeen = false; M.power = false;
   M.bars = M.bars.slice(-VIEW_BARS);
   newRegime(true);
 
@@ -103,7 +104,8 @@ HS.Market.run = function(opts, done){
     M.regimeLeft -= DT;
     if(M.regimeLeft <= 0) newRegime(false);
     const stretch = (M.price - M.open) / M.open;
-    let ret = (M.regime.d * cfg.vol * 0.45) + (HS.gauss() * cfg.vol) + (-stretch * 0.05 * cfg.vol * 8);
+    const vol = cfg.vol * (M.power ? 1.65 : 1);      /* the last hour has teeth */
+    let ret = (M.regime.d * vol * 0.45) + (HS.gauss() * vol) + (-stretch * 0.05 * vol * 8);
     if(M.shockLeft > 0){ ret += M.shock; M.shockLeft--; }
     M.price = Math.max(M.tickSize * 5, M.price * (1 + ret));
     M.price = Math.round(M.price / M.tickSize) * M.tickSize;
@@ -160,7 +162,10 @@ HS.Market.run = function(opts, done){
   /* Contracts for the currently selected slice of capacity. */
   function sizedQty(contract, isWrite){
     const cap = maxQty(contract, isWrite);
-    return Math.max(cap >= 1 ? 1 : 0, Math.floor(cap * M.sizePct));
+    /* The Blue House will not let you swing. Precision instead of noise,
+       which is exactly the wrong trade for a man with an audience. */
+    const pct = cfg.blue ? Math.min(M.sizePct, HS.BLUE.sizeCap) : M.sizePct;
+    return Math.max(cap >= 1 ? 1 : 0, Math.floor(cap * pct));
   }
 
   /* ---------- trading ---------- */
@@ -585,9 +590,69 @@ HS.Market.run = function(opts, done){
       if(eq < M.trough) M.trough = eq;
       if(eq <= cfg.startEquity * HS.bustFloor(G)){ finish('bust'); return; }
       if(M.tick >= TICKS){ finish('bell'); return; }
+      if(!M.targetSeen && eq >= cfg.startEquity * (1 + cfg.target) && prog() < POWER_PROG){
+        M.targetSeen = true;
+        offerPowerHour(eq);
+        return;
+      }
     }
     updateChain(); if(M.tab === 'book') renderBook();
     draw(); sync();
+  }
+
+  /* ---------- the power hour ----------
+     Hitting the number early is a decision, not a finish line. Bank it and
+     the day is yours, or sit out the quiet middle and come back for the last
+     hour, which is where the day actually moves. */
+  const POWER_HOUR = 15.0;
+  const POWER_PROG = (POWER_HOUR - HS.MARKET_OPEN) / (HS.MARKET_CLOSE - HS.MARKET_OPEN);
+
+  function offerPowerHour(eq){
+    M.running = false;
+    HS.Audio.cash();
+    const made = eq - cfg.startEquity;
+    $('mkBreakTitle').textContent = 'TARGET HIT';
+    $('mkBreakNum').textContent = HS.signed(made);
+    $('mkBreakNum').className = 'num ' + (made >= 0 ? 'g' : 'r');
+    $('mkBreakText').innerHTML =
+      'You are done for the day at ' + HS.clockStr(marketHour()) + ', and the middle of the ' +
+      'session is nothing but chop.' +
+      (G.positions.length
+        ? '<br><br><b class="y">' + G.positions.length + ' contract' + (G.positions.length===1?'':'s') +
+          ' still open.</b> Anything you leave on rides the afternoon without you.'
+        : '') +
+      '<br><br>The last hour is where the volume comes back.';
+    $('mkBreak').classList.add('show');
+  }
+
+  function skipToPowerHour(){
+    $('mkBreak').classList.remove('show');
+    const target = Math.floor(TICKS * POWER_PROG);
+    let rough = false;
+    while(M.tick < target){
+      step(false);
+      /* If the afternoon goes against what you left open, you come back to it
+         rather than being wiped out while you were not watching. */
+      if(equity() <= cfg.startEquity * HS.bustFloor(G) * 1.35){ rough = true; break; }
+    }
+    M.power = true;
+    updateChain(); renderBook(); draw(); sync();
+    countdown(3, () => {
+      M.running = true; M.last = performance.now(); M.acc = 0;
+      flash(rough ? 'You come back to a mess.' : 'Power hour. Size comes back in.');
+      requestAnimationFrame(frame);
+    });
+  }
+
+  function countdown(n, done2){
+    const el = $('mkCount'), num = $('mkCountNum');
+    el.classList.add('show');
+    (function tick(k){
+      num.textContent = k > 0 ? k : 'OPEN';
+      num.style.animation = 'none'; void num.offsetWidth; num.style.animation = '';
+      if(k <= 0){ setTimeout(() => { el.classList.remove('show'); done2(); }, 620); return; }
+      setTimeout(() => tick(k - 1), 700);
+    })(n);
   }
 
   function finish(reason){
@@ -596,6 +661,8 @@ HS.Market.run = function(opts, done){
     if(reason === 'bust'){
       G.positions.slice().forEach(p => closeById(p.id, true));
     } else {
+      /* Banking early still runs to the bell for anything expiring today:
+         you walked away, the contract did not. */
       settled = settleAtBell();
     }
     M.finished = true; M.running = false;
@@ -631,13 +698,21 @@ HS.Market.run = function(opts, done){
     }
     else if(k >= '1' && k <= '5'){ select(MONEY[+k-1], !e.shiftKey); e.preventDefault(); }
   }
+  const onPower = () => skipToPowerHour();
+  const onBank  = () => { $('mkBreak').classList.remove('show'); finish('target'); };
   $('mkBuy').addEventListener('click', onBuy);
   $('mkSell').addEventListener('click', onSell);
+  $('mkBreakGo').addEventListener('click', onPower);
+  $('mkBreakStop').addEventListener('click', onBank);
   document.querySelectorAll('#mkQty .mk-size').forEach(b => b.addEventListener('click', onQty));
   window.addEventListener('keydown', onKey, true);
   function detach(){
     $('mkBuy').removeEventListener('click', onBuy);
     $('mkSell').removeEventListener('click', onSell);
+    $('mkBreakGo').removeEventListener('click', onPower);
+    $('mkBreakStop').removeEventListener('click', onBank);
+    $('mkBreak').classList.remove('show');
+    $('mkCount').classList.remove('show');
     document.querySelectorAll('#mkQty .mk-size').forEach(b => b.removeEventListener('click', onQty));
     window.removeEventListener('keydown', onKey, true);
     window.removeEventListener('resize', fit);

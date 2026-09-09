@@ -372,6 +372,15 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
 .mk-pop{position:absolute;top:34%;font-family:var(--mono);font-size:16px;font-weight:700;
   pointer-events:none;text-shadow:0 2px 12px rgba(0,0,0,.9);animation:pop 1.05s ease-out forwards;}
 @keyframes pop{0%{opacity:0;transform:translateY(6px);}20%{opacity:1;}100%{opacity:0;transform:translateY(-40px);}}
+#mkBreak{position:absolute;inset:0;display:none;place-items:center;z-index:6;
+  background:rgba(4,6,10,.82);backdrop-filter:blur(7px);}
+#mkBreak.show{display:grid;}
+#mkBreak .bk{width:min(430px,90%);text-align:center;padding:24px 22px;border-radius:15px;
+  border:1px solid var(--gold);background:linear-gradient(170deg,#191F2C,#0C1016);
+  box-shadow:0 26px 76px rgba(0,0,0,.75);animation:cin .26s cubic-bezier(.2,.9,.3,1);}
+#mkBreak h3{margin:0 0 4px;font-size:19px;letter-spacing:2px;color:var(--gold);}
+#mkBreak .num{font-family:var(--mono);font-size:30px;font-weight:700;margin:8px 0 2px;}
+#mkBreak p{font-size:12px;line-height:1.6;color:var(--dim);margin:8px 0 0;}
 #mkCount{position:absolute;inset:0;display:none;place-items:center;pointer-events:none;z-index:5;}
 #mkCount.show{display:grid;}
 #mkCountNum{font-family:var(--mono);font-size:72px;font-weight:700;color:var(--gold);
@@ -591,6 +600,14 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
       before a session and strangers watch you trade; post the recap and some of them start
       paying, every week, on the morning the rent comes out. A red day in front of an
       audience costs more followers than a green one earns.</p>
+    <p class="pbody"><b>Then you build a firm.</b> From Funded Trader you can recruit at the
+      bar, off the floor of the Exchange, and out of your own chat. Take a lease, hand the
+      channel to whoever can carry a room, and walk the floor once a week so nobody quits.
+      Ladder &amp; Co. post a number every fortnight: beat them four quarters running to
+      finish, and lose one to start again at nothing.</p>
+    <p class="pbody"><b>Hit your target before three</b> and the session stops to ask what you
+      want. Bank the day, or skip the quiet middle and trade the <b>power hour</b>, which
+      moves harder in both directions.</p>
     <p class="pbody dim">The market runs 9:30 to 4:00 on weekdays and a session lasts until
       the bell, so get there early. A week is five sessions and one <b>Weekend</b>, which is
       when you chart the week ahead, take a class, work a room, or go into the office if you
@@ -642,6 +659,13 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
       <div id="mkNews"><b class="y">FLASH</b> <span id="mkNewsText"></span></div>
       <div class="mk-flash" id="mkFlash"></div>
       <div id="mkCount"><span id="mkCountNum">3</span></div>
+      <div id="mkBreak"><div class="bk">
+        <h3 id="mkBreakTitle">TARGET HIT</h3>
+        <div class="num" id="mkBreakNum"></div>
+        <p id="mkBreakText"></p>
+        <button class="btn" id="mkBreakGo">TRADE THE POWER HOUR</button>
+        <button class="btn ghost" id="mkBreakStop">BANK THE DAY</button>
+      </div></div>
     </div>
     <div class="mk-side">
       <div class="mk-tabs">
