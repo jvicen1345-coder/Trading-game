@@ -179,7 +179,7 @@ HS.Market.run = function(opts, done){
     }
     const qty = sizedQty(c, dir < 0);
     if(qty < 1){ flash(dir > 0 ? 'Not enough cash for even one contract.'
-                               : 'Not enough margin to write that.'); return; }
+                               : 'Not enough margin to sell that.'); return; }
     const q = quoteOf(c);
     const px = dir > 0 ? q.ask : q.bid;
     G.cash -= dir * px * CS * qty + feeEach() * qty;

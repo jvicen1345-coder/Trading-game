@@ -38,8 +38,9 @@ Everything including three.js is vendored in this folder.
 | `[` `]` | Zoom the camera |
 | `M` | Mute |
 
-In a trading session: `B` buy, `S` write, `Tab` change expiry, `1` to `5` pick a
-rung of the chain (hold `Shift` for the put).
+In a trading session: `B` buy, `S` sell, `Space` close what you are holding,
+`Tab` change expiry, `1` to `5` pick a rung of the chain (hold `Shift` for the
+put).
 
 Touch devices get a virtual stick and an ENTER button.
 
@@ -65,7 +66,7 @@ Contracts outlive the closing bell, so the book you carry home matters. Anything
 still open sits in the **BOOK** tab and is marked against the live tape. Size is
 a share of what you can actually deploy, so a session matters as much at five
 million as it does at five thousand. Long premium is paid in cash; leverage is
-margin, and only widens what you can write.
+margin, and only widens what you can sell.
 
 A session **is** the 9:30 to 4:00 trading day, so getting to work early buys you
 screen time.
