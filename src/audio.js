@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Jonathan Vicencio. All rights reserved. See LICENSE. */
 /* MARKET MAKER - procedural audio. No files, just oscillators. */
 window.HS = window.HS || {};
 (function(HS){

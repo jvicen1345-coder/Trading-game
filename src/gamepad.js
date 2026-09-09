@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Jonathan Vicencio. All rights reserved. See LICENSE. */
 /* MARKET MAKER - gamepad.
  *
  * A DualSense reports through the standard mapping, so this works for an Xbox

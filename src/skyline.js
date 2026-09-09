@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Jonathan Vicencio. All rights reserved. See LICENSE. */
 /* Title screen backdrop.
  *
  * The city seen from across the water at night: three parallax bands of

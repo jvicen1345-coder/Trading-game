@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Jonathan Vicencio. All rights reserved. See LICENSE. */
 /* MARKET MAKER - what happens inside each building. */
 window.HS = window.HS || {};
 (function(HS){

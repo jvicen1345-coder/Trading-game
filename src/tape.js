@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Jonathan Vicencio. All rights reserved. See LICENSE. */
 /* MARKET MAKER - the persistent market.
    Prices survive between sessions so a contract can outlive the day that
    opened it. One ticker is "the name of the week"; every other ticker still

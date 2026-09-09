@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Jonathan Vicencio. All rights reserved. See LICENSE. */
 /* MARKET MAKER - the trading session.
    You always trade your own account. Contracts are picked by moneyness rather
    than by strike arithmetic, and they survive the closing bell unless their

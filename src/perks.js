@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Jonathan Vicencio. All rights reserved. See LICENSE. */
 /* MARKET MAKER - perk constellations. Three trees, prerequisite-linked,
    bought with points earned from skill and rank. */
 window.HS = window.HS || {};

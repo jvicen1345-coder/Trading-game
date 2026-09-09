@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Jonathan Vicencio. All rights reserved. See LICENSE. */
 /* MARKET MAKER - options pricing and chain construction.
    Black–Scholes on a tape that realises roughly the volatility it is priced at,
    so the player's edge has to come from direction, not from vol mispricing. */

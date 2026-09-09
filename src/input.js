@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Jonathan Vicencio. All rights reserved. See LICENSE. */
 /* MARKET MAKER - keyboard/touch input. */
 window.HS = window.HS || {};
 (function(HS){

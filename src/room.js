@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Jonathan Vicencio. All rights reserved. See LICENSE. */
 /* MARKET MAKER - your room. Buy and fit things; each one does something small
    now and leaves a hook for more later. */
 window.HS = window.HS || {};

@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Jonathan Vicencio. All rights reserved. See LICENSE. */
 /* MARKET MAKER - shared helpers. Classic script, no modules (must run from file://). */
 window.HS = window.HS || {};
 (function(HS){

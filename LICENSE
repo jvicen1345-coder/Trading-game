@@ -1,0 +1,48 @@
+Market Maker
+Copyright (c) 2026 Jonathan Vicencio. All rights reserved.
+
+This software and its accompanying text, artwork, sound and documentation
+(together, "the Work") are the property of Jonathan Vicencio. The Work is
+made publicly readable for evaluation and for play. It is not open source
+and no licence is granted beyond what is written below.
+
+YOU MAY:
+
+  1. View, read and study the source code.
+  2. Run the Work locally for your own personal, non-commercial use, which
+     includes downloading a copy for that purpose.
+  3. Modify your own local copy for your own private use.
+  4. Quote short excerpts of the source in reviews, articles, teaching
+     material and commentary, with attribution.
+
+YOU MAY NOT, without prior written permission from the copyright holder:
+
+  1. Redistribute, publish, mirror, host or otherwise make the Work or any
+     substantial part of it available to others, modified or unmodified.
+  2. Sell, licence, rent or otherwise commercially exploit the Work or any
+     substantial part of it.
+  3. Incorporate the Work or any substantial part of it into another
+     product, game, service or dataset, including as training material.
+  4. Remove or alter any copyright, licence or attribution notice.
+
+Forking this repository within GitHub, and the reading and personal use that
+GitHub's own terms of service permit, are not restricted by this licence.
+
+Nothing here grants any right in the name "Market Maker", the name
+"Ladder & Co.", or any other name, logo or mark used in the Work.
+
+Third-party components distributed with the Work are licensed separately by
+their own authors. See THIRD-PARTY.md. This licence does not apply to them.
+
+THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS IN THE WORK.
+
+The Work is a simulation for entertainment. It is not financial advice, not a
+trading tool, and it connects to no market. See the Scope section of
+README.md.
+
+For permissions beyond this licence, contact the copyright holder.

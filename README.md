@@ -311,3 +311,17 @@ This repository is the game and nothing else. There is no live trading, no
 broker connection, no API keys and no market data. Every price you see is
 generated locally by `src/tape.js` and priced by `src/options.js`. It is a
 simulation for play, not a tool for trading real money.
+
+## Licence and ownership
+
+Copyright (c) 2026 Jonathan Vicencio. All rights reserved.
+
+Market Maker is source-available, not open source. You are welcome to read the
+code, play the game and modify your own copy. You may not redistribute it,
+host it, sell it, fold it into another product or use it as training material
+without written permission. The full terms are in `LICENSE`.
+
+three.js is vendored under its own MIT licence and is not covered by the
+above. See `THIRD-PARTY.md`.
+
+The names "Market Maker" and "Ladder & Co." are not licensed for use.
