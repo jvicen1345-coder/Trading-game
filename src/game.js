@@ -410,6 +410,7 @@ HS.Game = function(){
   /* ================= sessions ================= */
   G.finishSession = function(res){
     const S = G.S;
+    S.flags.coached = true;          /* one lesson, on the first day, and no more */
     S.workedToday = true;
     S.stats.sessions++;
     toTheBell();

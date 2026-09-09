@@ -87,6 +87,8 @@ HS.Locations = function(game){
       blue: HS.usingBlue(s),
       /* The intern week is guided; it does not need a decision every morning. */
       powerHour: !!s.path,
+      /* The first session ever stops to explain itself, and then never again. */
+      coach: !s.flags.coached,
       title: o.title, sub: o.sub
     }, res => {
       game.setPaused(false);

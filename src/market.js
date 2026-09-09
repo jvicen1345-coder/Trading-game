@@ -69,6 +69,7 @@ HS.Market.run = function(opts, done){
   M.price = real; M.open = real;
   M.shock = 0; M.shockLeft = 0; M.tick = 0;
   M.targetSeen = false; M.power = false;
+  M.coachedBuy = false; M.coachedLate = false;
   M.bars = M.bars.slice(-VIEW_BARS);
   newRegime(true);
 
@@ -190,6 +191,7 @@ HS.Market.run = function(opts, done){
     log('<b class="' + (dir>0?'g':'r') + '">' + (dir>0?'BOT':'SOLD') + '</b> ' + qty + 'x ' +
         HS.posName(c, G.day));
     renderBook(); sync();
+    if(cfg.coach && !M.coachedBuy){ M.coachedBuy = true; coachBought(); }
   }
 
   function closeById(id, quiet){
@@ -590,6 +592,9 @@ HS.Market.run = function(opts, done){
       if(eq < M.trough) M.trough = eq;
       if(eq <= cfg.startEquity * HS.bustFloor(G)){ finish('bust'); return; }
       if(M.tick >= TICKS){ finish('bell'); return; }
+      if(cfg.coach && !M.coachedLate && G.positions.length && prog() > 0.55){
+        M.coachedLate = true; coachLate(); return;
+      }
       if(cfg.powerHour && !M.targetSeen &&
          eq >= cfg.startEquity * (1 + cfg.target) && prog() < POWER_PROG){
         M.targetSeen = true;
@@ -599,6 +604,60 @@ HS.Market.run = function(opts, done){
     }
     updateChain(); if(M.tab === 'book') renderBook();
     draw(); sync();
+  }
+
+  /* ---------- the first day ----------
+     A new trader is told to buy a call and does, holds it into the bell and
+     watches it die, four days running. That is the market being honest and
+     the game being useless. So on the very first session the tape stops and
+     explains itself, three times, and then leaves you alone for good. */
+  let coachThen = null;
+  function coach(title, html, label, then){
+    M.running = false;
+    $('mkBreakTitle').textContent = title;
+    $('mkBreakNum').textContent = '';
+    $('mkBreakNum').className = 'num';
+    $('mkBreakText').innerHTML = html;
+    $('mkBreakGo').textContent = label || 'Got it';
+    $('mkBreakStop').style.display = 'none';
+    $('mkBreak').classList.add('show');
+    coachThen = then || (() => {});
+  }
+  function coachDone(){
+    const f = coachThen; coachThen = null;
+    $('mkBreak').classList.remove('show');
+    $('mkBreakStop').style.display = '';
+    $('mkBreakGo').textContent = 'TRADE THE POWER HOUR';
+    M.running = true; M.last = performance.now(); M.acc = 0;
+    requestAnimationFrame(frame);
+    if(f) f();
+  }
+
+  function coachOpen(){
+    coach('THE CHAIN',
+      'Calls on the left, puts on the right, and the rungs between them are how far ' +
+      'from the money each contract sits. <b>ATM</b> is the balanced bet. ' +
+      '<b>OTM</b> is cheap and needs a real move to pay.' +
+      '<br><br>Pick one, then <b>B</b> to buy it. Your supervisor said a cheap call. ' +
+      'She did not say what happens next.',
+      'Show me the chain');
+  }
+  function coachBought(){
+    coach('YOU ARE LONG',
+      'That is a <b>0DTE</b>. It expires at tonight\'s bell and it is losing value every ' +
+      'minute it sits there, whether the price moves or not. That bleed is <b>theta</b>, ' +
+      'and it is the whole reason most first days end red.' +
+      '<br><br>You do not have to hold it. <b>Space</b> closes your position at the ' +
+      'current price, and the money is yours the moment you do.',
+      'Understood');
+  }
+  function coachLate(){
+    coach('THE BELL IS COMING',
+      'You are still holding it. At four o\'clock this contract settles at whatever it is ' +
+      'actually worth, and an out-of-the-money one is worth nothing at all.' +
+      '<br><br>Close it with <b>space</b>, or hold and find out. Either way the rest of the ' +
+      'day is yours: no more interruptions.',
+      'Leave me to it');
   }
 
   /* ---------- the power hour ----------
@@ -708,7 +767,7 @@ HS.Market.run = function(opts, done){
     }
     else if(k >= '1' && k <= '5'){ select(MONEY[+k-1], !e.shiftKey); e.preventDefault(); }
   }
-  const onPower = () => skipToPowerHour();
+  const onPower = () => { if(coachThen) coachDone(); else skipToPowerHour(); };
   const onBank  = () => { $('mkBreak').classList.remove('show'); finish('target'); };
   $('mkBuy').addEventListener('click', onBuy);
   $('mkSell').addEventListener('click', onSell);
@@ -742,6 +801,7 @@ HS.Market.run = function(opts, done){
       $('mkCount').classList.remove('show');
       M.running = true; M.last = performance.now();
       requestAnimationFrame(frame);
+      if(cfg.coach) coachOpen();
       return;
     }
     n--;
