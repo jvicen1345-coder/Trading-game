@@ -158,11 +158,16 @@ HS.Market.run = function(opts, done){
     return Math.max(0, Math.floor(buyingPower() * 0.92 / Math.max(0.01, cost)));
   }
   /* Contracts for the currently selected slice of capacity. */
+  /* The most of your own cash the desk will let you put behind one idea. Rank
+     widens it, three perks widen it further, and the Blue House narrows it,
+     because precision is the whole of what it offers. */
+  function sizeCeiling(){
+    const rank = HS.sizeCap(G, cfg.leverage);
+    return cfg.blue ? Math.min(rank, HS.BLUE.sizeCap) : rank;
+  }
   function sizedQty(contract){
     const cap = maxQty(contract);
-    /* The Blue House will not let you swing. Precision instead of noise,
-       which is exactly the wrong trade for a man with an audience. */
-    const pct = cfg.blue ? Math.min(M.sizePct, HS.BLUE.sizeCap) : M.sizePct;
+    const pct = Math.min(M.sizePct, sizeCeiling());
     return Math.max(cap >= 1 ? 1 : 0, Math.floor(cap * pct));
   }
 
@@ -588,8 +593,16 @@ HS.Market.run = function(opts, done){
     const sellBtn = $('mkSell'), own = M.selected && heldLong(M.selected);
     sellBtn.disabled = !own;
     sellBtn.firstChild.textContent = own ? 'CLOSE' : 'SELL';
-    [...document.querySelectorAll('#mkQty .mk-size')].forEach(b =>
-      b.classList.toggle('sel', +b.dataset.pct === M.sizePct));
+    const ceil = sizeCeiling();
+    [...document.querySelectorAll('#mkQty .mk-size')].forEach(b => {
+      const pct = +b.dataset.pct;
+      b.classList.toggle('sel', pct === M.sizePct);
+      b.classList.toggle('over', pct > ceil + 1e-9);
+      b.title = pct > ceil
+        ? 'Above your limit. You would trade ' + Math.round(ceil * 100) + '% of cash'
+        : Math.round(pct * 100) + '% of your cash';
+    });
+    $('mkCeil').textContent = Math.round(ceil * 100) + '%';
   }
 
   /* ---------- loop ---------- */
@@ -776,7 +789,14 @@ HS.Market.run = function(opts, done){
   const onBuy = () => M.running && openPos(1);
   const onSell = () => M.running && openPos(-1);
   const onClose = () => { if(M.running && G.positions.length) closeById(G.positions[G.positions.length-1].id, false); };
-  const onQty = e => { M.sizePct = +e.currentTarget.dataset.pct; HS.Audio.click(); sync(); };
+  const onQty = e => {
+    const pct = +e.currentTarget.dataset.pct;
+    M.sizePct = pct;
+    const ceil = sizeCeiling();
+    if(pct > ceil + 1e-9)
+      flash('Your limit is ' + Math.round(ceil * 100) + '% of cash in one position.');
+    HS.Audio.click(); sync();
+  };
   function onKey(e){
     if(!M.running) return;
     const k = e.key.toLowerCase();

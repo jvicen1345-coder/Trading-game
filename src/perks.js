@@ -26,17 +26,17 @@ HS.PERK_TREES = [
     blurb:'How much you can carry, and what it costs you.',
     perks:[
       { id:'r1', name:'Position Sizing',x:0.5, y:0.06, req:{rank:1},
-        desc:'Carry 30% more size on every trade.' },
+        desc:'Another 12% of your cash into any one position.' },
       { id:'r2', name:'Tight Fills',    x:0.22,y:0.32, needs:['r1'],
         desc:'Commission cut by a third.' },
       { id:'r3', name:'Iron Stomach',   x:0.78,y:0.32, needs:['r1'],
         desc:'You can bleed to 25% of the book before they pull you.' },
-      { id:'r4', name:'Margin Line',    x:0.22,y:0.60, needs:['r2'], req:{rank:3},
-        desc:'Your desk extends half again as much buying power.' },
+      { id:'r4', name:'Bigger Ticket',  x:0.22,y:0.60, needs:['r2'], req:{rank:3},
+        desc:'Another 15% of your cash into any one position.' },
       { id:'r5', name:'Second Slot',    x:0.78,y:0.60, needs:['r3'], req:{rank:3},
         desc:'Hold two swing contracts at once instead of one.' },
       { id:'r6', name:'Whale Hands',    x:0.5, y:0.88, needs:['r4','r5'], req:{rank:5},
-        desc:'Another 60% of size on top of everything else.' }
+        desc:'Another 25% of your cash, on top of everything else.' }
     ]},
   { id:'street', name:'THE STREET', accent:'#E8B85C',
     blurb:'People, money, and staying out of the file.',
@@ -95,11 +95,23 @@ HS.buyPerk = function(S, id){
 };
 
 /* ---- effect lookups, so callers never test perk ids by hand ---- */
-HS.sizeMul     = S => (HS.hasPerk(S,'r1') ? 1.3 : 1) * (HS.hasPerk(S,'r6') ? 1.6 : 1);
+/* How much of your own cash may go into a single position. Nothing here can
+   put you past what you actually have, so the worst any of it can do is lose
+   you the money in front of you. */
+HS.sizeCapBonus = S => (HS.hasPerk(S,'r1') ? 0.12 : 0) +
+                       (HS.hasPerk(S,'r4') ? 0.15 : 0) +
+                       (HS.hasPerk(S,'r6') ? 0.25 : 0);
+
+/* Rank widens it too: the desk lets a partner take a swing it would never let
+   a junior take. `lev` is the leverage column of the DESK table, which is what
+   it means now that nothing can be sold to open. */
+HS.sizeCap = function(S, lev){
+  const base = 0.25 + Math.max(0, (lev || 1) - 1) * 0.18;
+  return HS.clamp(base + HS.sizeCapBonus(S), 0.1, 1);
+};
 HS.feeMul      = S => HS.hasPerk(S,'r2') ? 0.67 : 1;
 HS.bustFloor   = S => HS.hasPerk(S,'r3') ? 0.25 : 0.40;
-/* How far the desk will stretch past your cash. Higher is more rope. */
-HS.marginMul   = S => HS.hasPerk(S,'r4') ? 1.5 : 1;
+
 HS.swingSlots  = S => HS.hasPerk(S,'r5') ? 2 : 1;
 HS.reviewBonus = S => HS.hasPerk(S,'t6') ? 100 : (HS.hasPerk(S,'t2') ? 10 : 0);
 HS.alwaysIv    = S => HS.hasPerk(S,'t3');

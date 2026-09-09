@@ -67,10 +67,13 @@ Time is the thing you earn. A new trader gets today and nothing else:
 
 Contracts outlive the closing bell, so the book you carry home matters. Anything
 still open sits in the **BOOK** tab and is marked against the live tape. Size is
-a share of what you can actually deploy, so a session matters as much at five
-million as it does at five thousand. **Buying power** is what the desk lets you
-carry beyond your own cash and it grows with rank, but it is strictly intraday:
-anything your cash will not cover is sold at the bell.
+a share of your cash, so a session matters as much at five million as it does at
+five thousand.
+
+How large a share is the thing rank actually buys. An intern may put **25%** of
+their cash behind one idea and a partner **88%**, with three perks in the risk
+tree worth another 52 points between them. Nothing extends past what you have,
+so the worst a position can do is lose you the money in front of you.
 
 A session **is** the 9:30 to 4:00 trading day, so getting to work early buys you
 screen time.

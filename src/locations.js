@@ -301,14 +301,14 @@ HS.Locations = function(game){
       '<div class="stats-grid">' +
         stat('Day rate', HS.money(HS.rankOf(s).salary)) +
         stat('Commission', '$' + d.fee.toFixed(2) + '/contract') +
-        stat('Day target', HS.pct(d.target)) +
+        stat('Max position', Math.round(HS.sizeCap(s, d.leverage) * 100) + '% of cash') +
         stat('Market', why ? 'closed' : 'open until 4:00', why ? 'bad' : 'good') +
       '</div>';
 
     const actions = [ tradeAction(s, 'Trade the session',
       isIntern ? 'The training account, on the firm\'s terminals' : 'Options, on the firm\'s terminals',
       isIntern ? 'LADDER & CO. - INTERN' : 'LADDER & CO. - ' + HS.rankOf(s).name.toUpperCase(),
-      'Your own cash, on the firm\'s terminals') ];
+      Math.round(HS.sizeCap(s, d.leverage) * 100) + '% of cash per position') ];
 
     actions.push(HS.isWeekend(s.day) ? weekStudyAction(s) : reviewAction(s));
 
