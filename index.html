@@ -143,10 +143,16 @@ body.touch.portrait #rotate{display:flex;}
 
 /* ---------------- panels / modals ---------------- */
 .sheet{
-  position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;
+  position:fixed;inset:0;z-index:40;display:none;justify-content:center;
   padding:20px;background:rgba(4,6,10,.72);backdrop-filter:blur(6px);overflow-y:auto;
 }
+/* A flex item centred with align-items and taller than the box overflows both
+   ends, and the half above the top cannot be scrolled back to. An auto margin
+   centres the same way when it fits and gives up gracefully when it does not,
+   which is the difference between a readable perk tree on a phone and a
+   heading you can never scroll up to. */
 .sheet.show{display:flex;}
+.sheet > *{margin:auto;}
 .card{
   width:min(540px,100%);border-radius:15px;border:1px solid var(--border);
   background:linear-gradient(170deg,#151A25,#0C1016);
