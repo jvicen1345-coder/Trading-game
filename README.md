@@ -47,6 +47,28 @@ holding. Nothing you do not own is yours to sell.
 
 Touch devices get a virtual stick and an ENTER button.
 
+### A controller
+
+Plug in a DualSense, an Xbox pad or anything else that reports the standard
+mapping and press a button. The game notices and says so.
+
+| Pad | Walking the city | A list of choices | In a session |
+| --- | --- | --- | --- |
+| Left stick | Walk, rim to sprint | Move the cursor | Pick a rung |
+| `R2` | Sprint | | |
+| D-pad | | Move the cursor | Up and down the chain |
+| Cross | Enter a building | Take the choice | Buy |
+| Square | Perk trees | | Sell |
+| Circle | Back out | Back out | Close the position |
+| Triangle | Full city map | | Change expiry |
+| `L2` | | | Hold for the put |
+| `L1` `R1` | Zoom the camera | | Size down and up |
+| Options | Menu | Menu | Menu |
+| Share | Controls | | |
+
+Anywhere the game asks you to choose something the pad puts a gold cursor on
+the list. A session has no cursor, because every action there has a button.
+
 ## Trading
 
 Trading is options, and the chain is sorted by moneyness rather than by strike.
@@ -257,6 +279,7 @@ src/skyline.js      animated title screen backdrop
 src/world.js        renderer, follow camera, day/night lighting
 src/player.js       avatar, WASD movement, collision
 src/input.js        keyboard and touch
+src/gamepad.js      a controller, mapped onto the keys above
 src/ui.js           HUD, panels, toasts, minimap
 src/locations.js    what each building offers
 src/game.js         main loop, consequences, endings

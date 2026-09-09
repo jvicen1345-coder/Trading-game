@@ -42,6 +42,7 @@ src/world.js    renderer, camera, day/night
 src/player.js   avatar, movement, collision
 src/ui.js       HUD, panels, minimap
 src/input.js    keyboard and touch
+src/gamepad.js  a controller, mapped onto the keys above
 src/audio.js    procedural sound
 vendor/         three.js r128, vendored so the game runs offline
 ```

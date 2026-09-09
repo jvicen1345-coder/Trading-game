@@ -22,7 +22,7 @@ HS.Game = function(){
   const G = {};
   let world, player, input, city, ui, locs;
   let paused = true, started = false;
-  let nearest = null, lastT = 0, walkSfx = 0;
+  let nearest = null, lastT = 0, walkSfx = 0, pad = null;
   let collapsing = false;
   let perfFrames = 0, perfTime = 0, perfChecked = false;
   let roomSlot = 'bed';
@@ -38,6 +38,7 @@ HS.Game = function(){
     ui     = HS.UI(G);
     locs   = HS.Locations(G);
     G.ui = ui; G.world = world; G.city = city; G.player = player;
+    pad = HS.Pad(G, input);
 
     HS.Audio.loadPref();
     $('btnSound').classList.toggle('off', !HS.Audio.on);
@@ -141,6 +142,7 @@ HS.Game = function(){
     requestAnimationFrame(frame);
     const dt = Math.min(0.06, (now - lastT) / 1000);
     lastT = now;
+    if(pad) pad.poll();
     const S = G.S;
     const free = started && !paused && !ui.isPanelOpen() && !ui.isModalOpen() &&
                  !menuOpen() && !overlayOpen();

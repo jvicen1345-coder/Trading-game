@@ -16,11 +16,24 @@ HS.Input = function(){
     'shift':'sprint'
   };
 
+  /* An analogue stick sits alongside the keys rather than replacing them, so a
+     player can use a pad and a keyboard in the same session and neither one
+     cancels the other out. */
+  let padX = 0, padY = 0, padSprint = false;
+
   function apply(){
-    I.up = !!keys.up; I.down = !!keys.down;
-    I.left = !!keys.left; I.right = !!keys.right;
-    I.sprint = !!keys.sprint;
+    I.up    = !!keys.up    || padY < -0.3;
+    I.down  = !!keys.down  || padY >  0.3;
+    I.left  = !!keys.left  || padX < -0.3;
+    I.right = !!keys.right || padX >  0.3;
+    I.sprint = !!keys.sprint || padSprint;
+    I.axisX = padX; I.axisY = padY;
   }
+
+  I.setAxis = function(x, y, sprint){
+    padX = x; padY = y; padSprint = !!sprint;
+    apply();
+  };
 
   I.onKey = null;        // (key, event) => true if consumed
   I.enabled = true;

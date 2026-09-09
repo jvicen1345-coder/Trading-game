@@ -352,6 +352,11 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
 #mkQty .cap{font-size:8.5px;letter-spacing:1px;color:var(--faint);font-weight:700;margin-right:3px;}
 #mkQty .cap b{display:block;font-family:var(--mono);font-size:9.5px;color:var(--gold);letter-spacing:0;}
 .mk-size.over{opacity:.34;text-decoration:line-through;}
+
+/* the gamepad cursor */
+.gp-on{outline:2px solid var(--gold) !important;outline-offset:2px;
+  box-shadow:0 0 0 4px rgba(232,184,92,.18) !important;}
+body.pad .act:hover:not(.locked){transform:none;}
 .mk-size{padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--panel);
   font-family:var(--mono);font-size:11px;font-weight:600;color:var(--dim);}
 .mk-size.sel{border-color:#8A6E3A;color:var(--gold);background:rgba(232,184,92,.1);}
@@ -583,6 +588,19 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
       <kbd>[ ]</kbd><span>Zoom the camera</span>
       <kbd>M</kbd><span>Mute</span>
     </div>
+    <p class="pbody"><b>A controller works too.</b> Plug in a DualSense, an Xbox pad or
+      anything else that reports the standard mapping, and press a button to wake it up.
+      The <b>left stick</b> walks and pushing it to the rim sprints, or hold <b>R2</b>.
+      Out in the city <b>Cross</b> enters a building, <b>Square</b> opens the perk trees,
+      <b>Triangle</b> the map, <b>Circle</b> backs out of whatever you are in, and
+      <b>Options</b> is the menu. Anywhere there is a list of choices the pad puts a gold
+      cursor on it: <b>D-pad</b> or the stick to move, <b>Cross</b> to take it,
+      <b>Circle</b> to leave.</p>
+    <p class="pbody"><b>In a session</b> the pad has a button for everything, so no cursor:
+      <b>D-pad up and down</b> walk the rungs of the chain and holding <b>L2</b> picks the
+      put instead of the call, <b>L1</b> and <b>R1</b> size the trade down and up,
+      <b>Cross</b> buys, <b>Square</b> sells, <b>Circle</b> closes what you are holding and
+      <b>Triangle</b> changes expiry.</p>
     <p class="pbody"><b>In a trading session</b> the chain is sorted by moneyness, not by
       strike. <b>ATM</b> is the balanced bet, <b>OTM</b> is cheap and needs a move,
       <b>DEEP ITM</b> behaves almost like the stock. Pick a call or a put, then
@@ -764,6 +782,7 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
 <script src="src/world.js"></script>
 <script src="src/player.js"></script>
 <script src="src/input.js"></script>
+<script src="src/gamepad.js"></script>
 <script src="src/ui.js"></script>
 <script src="src/market.js"></script>
 <script src="src/locations.js"></script>
