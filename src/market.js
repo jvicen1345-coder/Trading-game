@@ -694,6 +694,22 @@ HS.Market.run = function(opts, done){
       'Leave me to it');
   }
 
+  /* The first session that is actually yours. Four days on the firm's training
+     account with a wage landing at four o'clock is not the same job, and
+     nothing else in the game marks the moment it stops. */
+  function coachSolo(){
+    coach('YOUR ACCOUNT NOW',
+      'No commute, no supervisor, and nobody putting a hundred and twenty dollars in your ' +
+      'hand at four o\'clock whatever you did with the morning. The wage line reads zero ' +
+      'from here on.' +
+      '<br><br>The number in the corner is your own money. It pays the rent, it buys the ' +
+      'next contract, and there is nothing underneath it.' +
+      '<br><br>They will still pull you at ' + Math.round(HS.bustFloor(G) * 100) + '%, and ' +
+      'that is no longer a firm protecting its own book. It is the only thing between you ' +
+      'and picking up shifts again.',
+      'It is mine to lose');
+  }
+
   /* ---------- the power hour ----------
      Hitting the number early is a decision, not a finish line. Bank it and
      the day is yours, or sit out the quiet middle and come back for the last
@@ -844,6 +860,7 @@ HS.Market.run = function(opts, done){
       M.running = true; M.last = performance.now();
       requestAnimationFrame(frame);
       if(cfg.coach) coachOpen();
+      else if(cfg.soloFirst) coachSolo();
       return;
     }
     n--;

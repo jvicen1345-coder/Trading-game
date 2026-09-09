@@ -90,6 +90,8 @@ HS.Locations = function(game){
       powerHour: !!s.path,
       /* The first session ever stops to explain itself, and then never again. */
       coach: !s.flags.coached,
+      /* And the first one that is your own money stops once more. */
+      soloFirst: s.path === 'solo' && !s.flags.soloBriefed,
       title: o.title, sub: o.sub
     }, res => {
       game.setPaused(false);
