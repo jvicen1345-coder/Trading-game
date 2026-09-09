@@ -57,7 +57,7 @@ HS.PATHS = {
       { i:3, name:'Funded Trader',    salary:0, outfit:2, need:{ skill:32, rep:22, cash:55000 } },
       { i:4, name:'Prop Desk of One', salary:0, outfit:3, need:{ skill:52, rep:42, cash:900000 } },
       { i:5, name:'Whale',            salary:0, outfit:4, need:{ skill:68, rep:55, cash:2500000 } },
-      { i:6, name:'THE LEGEND',       salary:0, outfit:4, need:{ skill:82, rep:64, cash:5000000 } }
+      { i:6, name:'THE WOLF',         salary:0, outfit:4, need:{ skill:82, rep:64, cash:5000000 } }
     ]
   },
   desk: {
