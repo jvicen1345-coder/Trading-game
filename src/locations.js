@@ -56,6 +56,7 @@ HS.Locations = function(game){
 
   function marketWhy(s){
     if(HS.isWeekend(s.day)) return 'The market is shut for the weekend';
+    if(s.blackout) return 'No power, no screens, no session today';
     if(s.hour >= HS.MARKET_CLOSE - 0.4) return 'The bell has rung. Come back tomorrow';
     return null;
   }
@@ -80,7 +81,8 @@ HS.Locations = function(game){
       vol: d.vol, trendStr: d.trend, chop: d.chop,
       leverage: d.leverage, feePerContract: d.fee,
       skill: s.skill, rank: s.rank,
-      edge: s.edge && s.edge.day === s.day ? s.edge : null,
+      edge: s.edge && s.edge.day === s.day ? s.edge
+           : (s.weekEdge && s.weekEdge.week === HS.weekOf(s.day) ? s.weekEdge : null),
       news: [22, 40], shock: 0.016 + s.rank * 0.003,
       title: o.title, sub: o.sub
     }, res => {
@@ -124,6 +126,56 @@ HS.Locations = function(game){
     };
   }
 
+  /* With the market shut there is nothing to read for today, so the work is
+     the week ahead instead. It is dearer than a daily review and it lasts
+     all week, which is what makes the weekend worth spending on. */
+  function weekStudyAction(s){
+    const price = cost(s, Math.round(E.review * 1.7));
+    const done = s.weekEdge && s.weekEdge.week === HS.weekOf(s.day) + 1;
+    return {
+      label:'Study the week ahead', detail:'Chart the whole tape while the market is shut',
+      cost:'2h · ' + price + ' energy',
+      disabled: done || s.energy < price,
+      why: done ? 'You have already done the work for next week' : 'Not enough energy',
+      onClick: () => { ui().closePanel(); game.weekStudy(); }
+    };
+  }
+
+  /* The channel. No salary means the audience is the salary, and the only
+     way to grow one is to trade in front of it. */
+  function channelActions(s){
+    if(!HS.canStream(s)) return [];
+    const st = s.stream, out = [];
+
+    if(!st.on){
+      out.push({ label:'Start a channel',
+        detail:'Stream your sessions. Strangers watch, and some of them pay',
+        cost:'free, and it costs you nothing but your privacy',
+        onClick: () => { ui().closePanel(); game.startChannel(); } });
+      return out;
+    }
+
+    const shut = HS.isWeekend(s.day) || s.blackout;
+    out.push({ label: st.live ? 'Go offline' : 'Go live for the session',
+      detail: st.live
+        ? 'Chat is waiting. Turn it off and nobody sees today'
+        : st.followers.toLocaleString() + ' followers · ' + st.subs.toLocaleString() +
+          ' subscribers · ' + HS.money(st.subs * HS.STREAM.subFee) + ' a week',
+      cost: st.live ? 'streaming' : HS.energyCost(s, HS.STREAM.liveEnergy) + ' energy on top of the session',
+      disabled: shut && !st.live,
+      why: s.blackout ? 'No power, no stream' : 'Nothing to stream with the market shut',
+      onClick: () => { ui().closePanel(); game.toggleLive(); } });
+
+    out.push({ label:'Post the recap',
+      detail:'Turn the people watching into people paying',
+      cost:'1.5h · ' + HS.energyCost(s, HS.STREAM.postEnergy) + ' energy',
+      disabled: s.energy < HS.energyCost(s, HS.STREAM.postEnergy) || st.followers < 20,
+      why: st.followers < 20 ? 'Nobody is watching yet. Stream a few sessions first'
+                             : 'Not enough energy',
+      onClick: () => { ui().closePanel(); game.postRecap(); } });
+    return out;
+  }
+
   /* ------------------------------- HOME ------------------------------- */
   function homePanel(){
     const s = S();
@@ -151,7 +203,8 @@ HS.Locations = function(game){
       actions.splice(0, 0, tradeAction(s, 'Trade from your desk',
         'Your own account, your own room, nobody to blame',
         'HOME DESK', 'Your account · ' + HS.PATHS.solo.name));
-      actions.push(reviewAction(s));
+      actions.push(HS.isWeekend(s.day) ? weekStudyAction(s) : reviewAction(s));
+      channelActions(s).forEach(a => actions.push(a));
     }
     if(s.cash < 3000 && (!s.path || s.path === 'solo')){
       actions.push({
@@ -219,7 +272,19 @@ HS.Locations = function(game){
       isIntern ? 'LADDER & CO. - INTERN' : 'LADDER & CO. - ' + HS.rankOf(s).name.toUpperCase(),
       d.leverage.toFixed(1) + 'x buying power') ];
 
-    actions.push(reviewAction(s));   // interns learn this on day two
+    actions.push(HS.isWeekend(s.day) ? weekStudyAction(s) : reviewAction(s));
+
+    /* Nobody makes you come in at the weekend. Everybody notices that you did. */
+    if(s.path === 'desk' && HS.isWeekend(s.day)){
+      const price = cost(s, E.work);
+      actions.push({
+        label:'Come in at the weekend', detail:'An empty floor, the models, and somebody senior noticing',
+        cost:'5h · ' + price + ' energy',
+        disabled: s.workedToday || s.energy < price,
+        why: s.workedToday ? 'You have put your hours in already' : 'Not enough energy',
+        onClick: () => { ui().closePanel(); game.weekendShift(); }
+      });
+    }
 
     if(nr){
       const needs = HS.needText(s, nr.need);
@@ -431,24 +496,37 @@ HS.Locations = function(game){
   /* ----------------------------- REALTOR ------------------------------ */
   L.realtor = function(){
     const s = S();
-    const next = HS.HOUSING[s.housing + 1];
+    const here = HS.HOUSING[s.housing];
     const body =
       para('Glossy boards, a woman who smiles with her teeth only, and the exact square footage of everything you are not yet.') +
       '<div class="stats-grid">' +
-        stat('Living in', HS.HOUSING[s.housing].name) +
-        stat('Weekly rent', HS.HOUSING[s.housing].rent ? HS.money(HS.HOUSING[s.housing].rent) : 'free') +
-      '</div>' +
-      (next ? para('<b>' + next.name + '</b>. ' + next.desc)
-            : para('<span class="dim">There is nothing above the penthouse.</span>'));
+        stat('Living in', here.name) +
+        stat('Weekly rent', here.rent ? HS.money(here.rent) : 'free') +
+        stat('Nights disturbed', here.bad ? Math.round(here.bad * 100) + '%' : 'never') +
+        stat('Power cuts', here.cut ? Math.round(here.cut * 100) + '%' : 'never') +
+      '</div>';
+
+    /* Every rung above you at once, so the climb is legible and you can see
+       exactly what the next rent buys in peace and quiet. */
     const actions = [];
-    if(next){
-      actions.push({ label:'Take ' + next.name,
-        detail:'Better rest and a bigger room · rent ' + HS.money(next.rent) + '/week',
-        cost: HS.money(next.price),
-        disabled: s.cash < next.price, why:'You cannot cover the deposit',
-        onClick: () => { ui().closePanel(); game.moveHouse(); } });
-    }
-    return { title:'Kestrel Realty', sub:'PROPERTY', accent:'#E0A6FF', body, actions };
+    HS.HOUSING.forEach(h => {
+      if(h.id <= s.housing) return;
+      const detail = h.desc + ' · rent ' + HS.money(h.rent) + '/week' +
+        (h.bad || h.cut ? ' · ' + Math.round(h.bad * 100) + '% bad nights, ' +
+                          Math.round(h.cut * 100) + '% power cuts'
+                        : ' · quiet and always on');
+      actions.push({
+        label: (h.buy ? 'Buy ' : 'Take ') + h.name,
+        detail: detail,
+        cost: HS.money(h.deposit) + (h.buy ? '' : ' deposit'),
+        disabled: s.cash < h.deposit,
+        why: h.buy ? 'You cannot cover the price' : 'You cannot cover the deposit',
+        onClick: () => { ui().closePanel(); game.moveHouse(h.id); }
+      });
+    });
+    return { title:'Kestrel Realty', sub:'PROPERTY', accent:'#E0A6FF',
+      body: body + (actions.length ? '' : para('<span class="dim">There is nothing above the penthouse.</span>')),
+      actions };
   };
 
   /* -------------------------------- SEC ------------------------------- */

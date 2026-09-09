@@ -50,9 +50,10 @@ HS.money = function(n){
 HS.moneyFull = n => (n < 0 ? '-$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-US');
 HS.signed = n => (n >= 0 ? '+' : '') + HS.money(n);
 HS.pct = n => (n >= 0 ? '+' : '') + (n*100).toFixed(1) + '%';
+HS.pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
-const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-HS.dayName = d => DAYS[(d - 1) % 7];   /* weekday/calendar helpers live in tape.js */
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Weekend'];
+HS.dayName = d => DAYS[(d - 1) % 6];   /* weekday/calendar helpers live in tape.js */
 HS.clockStr = function(hour){
   const h = Math.floor(hour), m = Math.floor((hour - h) * 60);
   const ap = h >= 12 ? 'PM' : 'AM';

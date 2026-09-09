@@ -17,22 +17,25 @@ HS.TICKERS = {
 const ORDER = Object.keys(HS.TICKERS);
 
 /* ---------------- calendar ----------------
-   Day 1 is a Monday. Days 6 and 7 of each week are the weekend. */
-HS.weekOf        = d => Math.floor((d - 1) / 7) + 1;
-HS.weekdayIndex  = d => (d - 1) % 7;                 // 0 = Mon … 6 = Sun
-HS.isWeekend     = d => HS.weekdayIndex(d) >= 5;
+   Day 1 is a Monday. A week is six days: five sessions and one weekend.
+   Saturday and Sunday are a single day, because two days of a shut market
+   is two days of clicking through nothing. */
+HS.WEEK_DAYS     = 6;
+HS.weekOf        = d => Math.floor((d - 1) / 6) + 1;
+HS.weekdayIndex  = d => (d - 1) % 6;                 // 0 = Mon .. 4 = Fri, 5 = Weekend
+HS.isWeekend     = d => HS.weekdayIndex(d) === 5;
 HS.isFriday      = d => HS.weekdayIndex(d) === 4;
 HS.isMonday      = d => HS.weekdayIndex(d) === 0;
 
-/* Monotonic count of trading days elapsed before `d`. Weekends do not count. */
+/* Monotonic count of trading days elapsed before `d`. The weekend does not
+   count, so a trading week is still five sessions. */
 HS.tradingDay = function(d){
-  const w = Math.floor((d - 1) / 7), rem = (d - 1) % 7;
+  const w = Math.floor((d - 1) / 6), rem = (d - 1) % 6;
   return w * 5 + Math.min(rem, 5);
 };
 /* The trading-day index of this week's Friday. */
 HS.fridayOfWeek = function(d){
-  const w = Math.floor((d - 1) / 7);
-  return w * 5 + 4;
+  return Math.floor((d - 1) / 6) * 5 + 4;
 };
 
 /* ---------------- market state ---------------- */

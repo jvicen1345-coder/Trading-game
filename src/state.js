@@ -3,7 +3,10 @@ window.HS = window.HS || {};
 (function(HS){
 'use strict';
 
-const SAVE_KEY = 'marketmaker_save_v2';
+/* v3: the week is six days now, so every stored day number and every
+   contract expiry derived from it means something different. There is no
+   honest migration from a seven day week, so v2 saves are left behind. */
+const SAVE_KEY = 'marketmaker_save_v3';
 
 /* Real seconds -> game minutes. Slow enough that a weekday has room in it. */
 HS.MINUTES_PER_SECOND = 1.0;
@@ -28,16 +31,95 @@ HS.restFor = function(hour){
   return HS.REST.poor;
 };
 
+/* Where you sleep decides how well you sleep, and at the bottom of the
+   ladder it decides whether you get to trade at all. `bad` is the chance a
+   night goes wrong whatever time you turned in; `cut` is the chance the
+   power is off in the morning and the session is gone. Cheap rooms are
+   cheap for a reason, and that is the whole incentive to climb. */
 HS.HOUSING = [
-  { id:0, name:"Parents' Basement", landmark:'home_basement', rent:0,
-    quality:0.86, price:0,       desc:'Damp, low ceiling, a poster of a yacht you do not own.' },
-  { id:1, name:'Rented Studio',     landmark:'home_studio',    rent:900,
-    quality:0.94, price:14000,   desc:'Four hundred square feet and your name on the lease.' },
-  { id:2, name:'Riverside Loft',    landmark:'home_loft',      rent:5200,
-    quality:1.00, price:180000,  desc:'Exposed brick, river light, a doorman who knows you.' },
-  { id:3, name:'Sky Penthouse',     landmark:'home_penthouse', rent:24000,
-    quality:1.06, price:2400000, desc:'The whole skyline, below you, where it belongs.' }
+  { id:0, name:"Parents' Basement", landmark:'home_basement', rent:0,     deposit:0,
+    quality:0.86, bad:0,    cut:0,    buy:false,
+    desc:'Damp, low ceiling, a poster of a yacht you do not own.' },
+  { id:1, name:'Rooming House',     landmark:'home_studio',    rent:150,   deposit:400,
+    quality:0.78, bad:0.25, cut:0.08, buy:false,
+    desc:'A bed, a chair, a shared bathroom down the hall, and walls like paper.' },
+  { id:2, name:'Share House',       landmark:'home_studio',    rent:320,   deposit:900,
+    quality:0.86, bad:0.15, cut:0.04, buy:false,
+    desc:'Three strangers, one kitchen, and somebody who does not believe in headphones.' },
+  { id:3, name:'Rented Studio',     landmark:'home_studio',    rent:900,   deposit:1800,
+    quality:0.94, bad:0.06, cut:0.01, buy:false,
+    desc:'Four hundred square feet and your name on the lease.' },
+  { id:4, name:'Riverside Loft',    landmark:'home_loft',      rent:5200,  deposit:180000,
+    quality:1.00, bad:0,    cut:0,    buy:true,
+    desc:'Exposed brick, river light, a doorman who knows you.' },
+  { id:5, name:'Sky Penthouse',     landmark:'home_penthouse', rent:24000, deposit:2400000,
+    quality:1.06, bad:0,    cut:0,    buy:true,
+    desc:'The whole skyline, below you, where it belongs.' }
 ];
+HS.FIRST_RENTAL = 1;                     /* what the basement throws you into */
+
+HS.BAD_NIGHTS = [
+  'The couple through the wall argued until four. You heard all of it.',
+  'A radiator you cannot turn off, banging every twenty minutes.',
+  'Somebody came in at two and played music like the building was theirs.',
+  'Sirens on this street, all night, every night.',
+  'Your neighbour watches television at a volume that suggests a grievance.'
+];
+HS.BLACKOUTS = [
+  'The whole floor is dark. The landlord is not answering and the super shrugs.',
+  'A breaker somewhere gave up in the night, and nobody here owns the panel.',
+  'The bill went unpaid by someone, and the company does not much care which of you it was.',
+  'Half the block is out. A man in a van says maybe this afternoon, maybe tomorrow.'
+];
+
+/* ------------------------------------------------------------------
+   THE CHANNEL
+   A day trader has no salary, so the audience is the salary. Followers are
+   reach and subscribers are money, and the only way to grow either is to
+   put your screen in front of strangers while you trade.
+
+   The catch is deliberate: an audience rewards size and drama, not
+   discipline, so the channel quietly pays you to take the trade you should
+   not. Every green day compounds and every red day in public costs more
+   than the green one paid.
+   ------------------------------------------------------------------ */
+HS.STREAM = {
+  unlockRank: 2,              // solo only, once you are Consistent
+  liveEnergy: 8,              // on top of the session itself
+  postEnergy: 6,              // the evening recap
+  subFee: 9,                  // per subscriber, per week
+  churn: 0.06,                // baseline weekly bleed
+  churnBad: 0.22,             // after a losing week
+  viralAt: 0.18,              // a session return that gets you shared around
+  viralMul: 3.4
+};
+
+/* Followers earned by streaming one session, given its return on the day.
+   A bad day empties the room, but it can only empty it of people who were
+   already in it, so a run of losses cannot bury a channel before it starts.
+   Showing up at all is worth a few viewers either way. At any real size a
+   red day still costs more than a green day pays, which is the point. */
+HS.streamFollowers = function(S, ret){
+  const here = S.stream.followers;
+  const showUp = 12;
+  if(ret >= 0){
+    const gain = showUp + (40 + here * 0.16) * (0.35 + Math.min(3, ret / 0.05) * 0.55);
+    return Math.round(ret >= HS.STREAM.viralAt ? gain * HS.STREAM.viralMul : gain);
+  }
+  const leave = here * Math.min(0.55, (-ret / 0.04) * 0.16);
+  return Math.round(showUp - leave);
+};
+
+/* The recap turns reach into rent money. A good week converts far better
+   than a bad one, and reputation is what makes people trust the pitch. */
+HS.streamConvert = function(S, weekRet){
+  const base = 0.020 + HS.clamp(weekRet, -0.1, 0.4) * 0.10 + S.rep * 0.00045;
+  const pool = Math.max(0, S.stream.followers - S.stream.subs * 8);
+  return Math.max(0, Math.round(pool * HS.clamp(base, 0.004, 0.075)));
+};
+
+HS.hasChannel = S => !!(S.stream && S.stream.on);
+HS.canStream  = S => S.path === 'solo' && S.rank >= HS.STREAM.unlockRank;
 
 /* ------------------------------------------------------------------
    CAREER
@@ -110,7 +192,7 @@ HS.KADE_RUMOURS = [
 
 HS.newState = function(){
   return {
-    version:2,
+    version:3,
     day:1, hour:8.0,
     cash:400, loan:0, loanRate:0.04,
     rep:0, skill:5, heat:0, energy:66, maxEnergy:72,
@@ -126,7 +208,10 @@ HS.newState = function(){
     workedToday:false, studiedToday:false, networkedToday:false,
     gymToday:false, reviewedToday:false, drinksToday:0,
     edge:null,
-    rentDueDay:8,
+    weekEdge:null,
+    blackout:false,
+    stream:{ on:false, live:false, followers:0, subs:0, streamed:0, viral:0, lastPaid:0 },
+    rentDueDay:7,          // Monday of week two, when you get a place of your own
     tutorial:{ step:0, done:false },
     stats:{ sessions:0, wins:0, bestDay:0, daysPlayed:1, netPeak:400 },
     flags:{},
@@ -147,7 +232,10 @@ HS.nextRank = function(S){
 };
 HS.netWorth = function(S){
   let n = S.cash - S.loan;
-  n += HS.HOUSING[S.housing].price * 0.85;
+  /* A place you bought is an asset. A place you rent is not, whatever the
+     deposit was. */
+  const home = HS.HOUSING[S.housing];
+  if(home.buy) n += home.deposit * 0.85;
   n += S.aum * 0.02;
   n += S.brokers.length * 40000;
   (S.positions || []).forEach(p => { n += p.qty * p.entry * 100; });
@@ -208,11 +296,29 @@ HS.rollDay = function(S, ev){
   }
 
   if(S.day >= S.rentDueDay){
-    S.rentDueDay = S.day + 7;
+    S.rentDueDay = S.day + HS.WEEK_DAYS;
     const rent = HS.HOUSING[S.housing].rent;
     if(rent > 0){
       S.cash -= rent;
       ev.push({ kind:'bill', text:'Rent due. ' + HS.money(rent) + ' out.' });
+    }
+
+    /* Subscriptions land the same morning the rent does, which is the whole
+       point of them. They also bleed, and they bleed hardest after a week
+       your audience watched you lose. */
+    const st = S.stream;
+    if(st && st.on && st.subs > 0){
+      const take = st.subs * HS.STREAM.subFee;
+      S.cash += take;
+      st.lastPaid = take;
+      ev.push({ kind:'good', text:st.subs + ' subscribers paid. ' + HS.money(take) + ' in.' });
+      const bad = S.weekPnl < 0;
+      const lost = Math.round(st.subs * (bad ? HS.STREAM.churnBad : HS.STREAM.churn));
+      if(lost > 0){
+        st.subs = Math.max(0, st.subs - lost);
+        ev.push({ kind:'bad', text: (bad ? 'A red week on camera. ' : '') +
+                  lost + ' subscriber' + (lost === 1 ? '' : 's') + ' cancelled.' });
+      }
     }
     if(S.loan > 0){
       const rate = S.loanRate * (HS.hasPerk(S,'s3') ? 0.5 : 1);
@@ -283,14 +389,7 @@ HS.load = function(){
     const raw = localStorage.getItem(SAVE_KEY);
     if(!raw) return null;
     const S = JSON.parse(raw);
-    if(!S || S.version !== 2) return null;
-    /* Saves from before the swing contract carry quarter-long LEAPs. Bring
-       them onto the new ladder rather than throwing the run away. */
-    (S.positions || []).forEach(p => {
-      if(p.kind !== 'leap') return;
-      p.kind = 'swing';
-      p.expiryDay = Math.min(p.expiryDay, HS.tradingDay(S.day) + HS.SWING_DAYS);
-    });
+    if(!S || S.version !== 3) return null;
     return S;
   }catch(e){ return null; }
 };

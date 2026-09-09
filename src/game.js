@@ -298,8 +298,16 @@ HS.Game = function(){
     const before = S.day;
     if(S.hour >= HS.WAKE_HOUR){ S.hour = HS.WAKE_HOUR; rollDay(); }
     else S.hour = HS.WAKE_HOUR;
+
+    /* Cheap walls do not care what time you turned in. */
+    const home = HS.HOUSING[S.housing];
+    let disturbed = null;
+    if(home.bad && Math.random() < home.bad && rest.id > 0){
+      disturbed = HS.pick(HS.BAD_NIGHTS);
+      rest = rest.id === 2 ? HS.REST.normal : HS.REST.poor;
+    }
     S.rest = rest.id;
-    const q = HS.HOUSING[S.housing].quality;
+    const q = home.quality;
     const target = HS.clamp(rest.pct * q + HS.roomBonus(S,'sleep'), 0, 1.1) * S.maxEnergy;
     S.energy = HS.clamp(Math.max(S.energy, target) + HS.roomBonus(S,'morning'), 0, S.maxEnergy);
     placeAtHome(true);
@@ -307,10 +315,78 @@ HS.Game = function(){
     ui.syncHud();
     const label = rest.id === 2 ? 'You wake refreshed.' : rest.id === 0 ? 'You wake ragged.' : 'You wake up.';
     ui.toast('Day ' + S.day + ', ' + HS.dayName(S.day) + '. ' + label, rest.id === 2 ? 'good' : '');
+    if(disturbed) ui.toast(disturbed, 'bad');
+    if(S.day > before) powerCutCheck();
+    if(evictionDue()){ checkFail(); eviction(); return; }
     if(S.day > before) tutorMaybe(['sleep1','sleep2','sleep3']);
     if(S.tutorial.step >= TUTORIAL.length && !S.tutorial.done) endTutorial();
     if(!S.path && S.day > 5) offerWeekOneChoice();
     checkFail();
+  }
+
+  /* The other half of living cheap: some mornings there is no power, and a
+     session you cannot open is a day of the week gone. */
+  function powerCutCheck(){
+    const S = G.S;
+    const home = HS.HOUSING[S.housing];
+    S.blackout = false;
+    if(!home.cut || HS.isWeekend(S.day) || S.ended) return;
+    if(Math.random() >= home.cut) return;
+    S.blackout = true;
+    HS.Audio.fail();
+    ui.modal({
+      title:'THE POWER IS OUT', tone:'bad',
+      body:'<p>' + HS.pick(HS.BLACKOUTS) + '</p>' +
+           '<p class="dim">No screens, no tape, no session today. The market does not wait for you ' +
+           'to sort out your electricity.</p>',
+      actions:[{ label:'Nothing to be done', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }]
+    });
+  }
+
+  /* ================= moving out ================= */
+  /* Monday of week two, whichever way you went. Nobody is asking. */
+  function evictionDue(){
+    const S = G.S;
+    return !S.flags.movedOut && S.housing === 0 && S.path &&
+           HS.weekOf(S.day) >= 2 && HS.isMonday(S.day);
+  }
+  function eviction(){
+    const S = G.S;
+    S.flags.movedOut = true;
+    const room = HS.HOUSING[HS.FIRST_RENTAL];
+    const solo = S.path === 'solo';
+    const scene = solo
+      ? '<p>Your mother is at the top of the basement stairs with her arms folded, and your father ' +
+        'will not come down at all. You told them you turned down the job at the brokerage to trade ' +
+        'from a bedroom. They heard something else entirely.</p>' +
+        '<p>The word they keep using is <b>Monday</b>. As in, by.</p>'
+      : '<p>Your new boss reads your file back to you, stops at the address, and reads it again.</p>' +
+        '<p>"You are a broker at this firm now. Clients ask where a man lives. Nobody at Ladder ' +
+        'gives out his parents\' basement." He writes something down. "Sort it this week."</p>';
+
+    const canAfford = S.cash >= room.deposit;
+    ui.modal({
+      title: solo ? 'YOUR MOTHER HAS HAD ENOUGH' : 'A WORD ABOUT YOUR ADDRESS', tone:'bad',
+      body: scene +
+        '<p class="pbody">The only thing you can afford is a <b>' + room.name.toLowerCase() + '</b>. ' +
+        room.desc + '</p>' +
+        '<div class="stats-grid">' +
+          '<div class="stat"><span class="k">DEPOSIT</span><span class="v">' + HS.money(room.deposit) + '</span></div>' +
+          '<div class="stat"><span class="k">RENT</span><span class="v">' + HS.money(room.rent) + '/wk</span></div>' +
+          '<div class="stat"><span class="k">BAD NIGHTS</span><span class="v bad">' + Math.round(room.bad*100) + '%</span></div>' +
+          '<div class="stat"><span class="k">POWER CUTS</span><span class="v bad">' + Math.round(room.cut*100) + '%</span></div>' +
+        '</div>' +
+        (canAfford ? '' : '<p class="pbody" style="color:var(--red)">You cannot cover the deposit, ' +
+          'so it goes on the tab at ' + Math.round(S.loanRate*100) + '% a week.</p>'),
+      actions:[{ label:'Pack', onClick:()=>{
+        ui.closeModal();
+        if(!canAfford){                       /* borrow exactly the shortfall */
+          const short = room.deposit - Math.max(0, S.cash);
+          S.loan += short; S.cash = Math.max(0, S.cash) + short;
+        }
+        G.moveHouse(HS.FIRST_RENTAL);
+      }}]
+    });
   }
 
   /* ================= the internship ================= */
@@ -347,6 +423,25 @@ HS.Game = function(){
     HS.addRep(S, repDelta);
     HS.addSkill(S, res.pnl > 0 ? 0.20 : 0.12);
 
+    /* If you were live, the audience saw whatever just happened. */
+    let streamRow = null;
+    const st = S.stream;
+    if(st && st.on && st.live){
+      st.live = false;
+      st.streamed++;
+      HS.addEnergy(S, -HS.energyCost(S, HS.STREAM.liveEnergy));
+      const ret = res.pnl / Math.max(1, S.cash - res.pnl);
+      const delta = HS.streamFollowers(S, ret);
+      st.followers = Math.max(0, st.followers + delta);
+      if(ret >= HS.STREAM.viralAt){ st.viral++; HS.addRep(S, 2.5); }
+      if(res.busted){                       /* blowing up in public is a story */
+        st.followers = Math.round(st.followers * 0.72);
+        HS.addRep(S, -3);
+      }
+      streamRow = ['Followers', (delta>=0?'+':'') + delta.toLocaleString() +
+                   (ret >= HS.STREAM.viralAt ? '  VIRAL' : res.busted ? '  they clipped it' : '')];
+    }
+
     const rows = [
       ['Session P&L', HS.signed(res.pnl)],
       ['Wage', HS.money(salary)],
@@ -356,6 +451,7 @@ HS.Game = function(){
     if(res.settled && res.settled.length){
       res.settled.forEach(x => rows.push([x.name + ' settled', HS.signed(x.pnl)]));
     }
+    if(streamRow) rows.push(streamRow);
     if(S.positions.length) rows.push(['Still open', S.positions.length + ' contract(s)']);
 
     HS.Audio[res.pnl >= 0 ? 'cash' : 'loss']();
@@ -370,6 +466,98 @@ HS.Game = function(){
       } }]
     });
     checkFail();
+  };
+
+  /* ================= the weekend ================= */
+  G.weekStudy = function(){
+    const S = G.S;
+    G.spendTime(2);
+    HS.addEnergy(S, -HS.energyCost(S, Math.round(HS.ENERGY.review * 1.7)));
+    const rested = S.rest === 2 ? 6 : S.rest === 0 ? -6 : 0;
+    /* A week of homework reads better than a morning of it, but it is one
+       call on five sessions, so it is never as sharp as looking at today. */
+    const confidence = Math.round(HS.clamp(44 + S.skill*0.38 + HS.reviewBonus(S) +
+                                           HS.roomBonus(S,'review') + rested, 44, 92));
+    const truth = Math.random() < 0.5 ? 1 : -1;
+    const shown = (Math.random()*100 < confidence) ? truth : -truth;
+    S.weekEdge = { week: HS.weekOf(S.day) + 1, dir:truth, shown, confidence, day:-1 };
+    HS.addSkill(S, 0.5);
+    HS.Audio.levelUp();
+    ui.modal({
+      title: shown > 0 ? 'THE WEEK LOOKS BID' : 'THE WEEK LOOKS OFFERED',
+      tone: shown > 0 ? 'good' : 'bad',
+      body: crossSvg(shown) +
+        '<p>Six hours at the kitchen table with every chart you can find. Across the whole tape ' +
+        'the weight of it sits ' + (shown > 0 ? '<b class="up">to the upside</b>' : '<b class="down">to the downside</b>') + '.</p>' +
+        '<p class="dim">Your read is <b>' + confidence + '%</b> reliable and it stands for every ' +
+        'session next week, unless a morning review says otherwise.</p>',
+      actions:[{ label:'Noted', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }]
+    });
+  };
+
+  G.weekendShift = function(){
+    const S = G.S;
+    G.spendTime(5);
+    HS.addEnergy(S, -HS.energyCost(S, HS.ENERGY.work));
+    S.workedToday = true;
+    const rep = 2.2 + S.rank * 0.45;
+    HS.addRep(S, rep);
+    HS.addSkill(S, 0.7);
+    HS.Audio.cash();
+    ui.toast('Five hours on an empty floor. Reputation +' + rep.toFixed(1) + '.', 'good');
+    ui.syncHud(); HS.save(S);
+  };
+
+  /* ================= the channel ================= */
+  G.startChannel = function(){
+    const S = G.S;
+    S.stream.on = true;
+    HS.Audio.levelUp();
+    ui.modal({
+      title:'YOU START A CHANNEL', tone:'good',
+      body:'<p>A webcam pointed at the corner of your screen, a name you will regret, and a chat ' +
+           'window that is empty for eleven minutes and then is not.</p>' +
+           '<p class="pbody">Go live before a session and strangers watch you trade. Post the recap ' +
+           'afterwards and some of them start paying. They pay <b>' + HS.money(HS.STREAM.subFee) +
+           '</b> each a week, on the same morning the rent comes out.</p>' +
+           '<p class="pbody dim">They came to watch somebody win. A red day on camera costs you ' +
+           'more followers than a green one earns.</p>',
+      actions:[{ label:'Go on then', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }]
+    });
+  };
+
+  G.toggleLive = function(){
+    const S = G.S;
+    S.stream.live = !S.stream.live;
+    HS.Audio.click();
+    ui.toast(S.stream.live ? 'You are live. Chat is watching.' : 'Stream off.',
+             S.stream.live ? 'good' : '');
+    ui.syncHud(); HS.save(S);
+  };
+
+  G.postRecap = function(){
+    const S = G.S;
+    const st = S.stream;
+    G.spendTime(1.5);
+    HS.addEnergy(S, -HS.energyCost(S, HS.STREAM.postEnergy));
+    const weekRet = S.weekPnl / Math.max(1, S.weekStartCash);
+    const gained = HS.streamConvert(S, weekRet);
+    st.subs += gained;
+    HS.addRep(S, 0.6);
+    HS.Audio.cash();
+    ui.modal({
+      title:'YOU POST THE RECAP', tone: gained > 0 ? 'good' : '',
+      body:'<p>' + (gained > 0
+          ? 'The clip does the rounds. A few of them decide you are worth paying for.'
+          : 'It goes out. It lands on nobody in particular.') + '</p>' +
+        tallies([
+          ['New subscribers', gained > 0 ? '+' + gained : 'none'],
+          ['Subscribers', st.subs.toLocaleString()],
+          ['Followers', st.followers.toLocaleString()],
+          ['Weekly income', HS.money(st.subs * HS.STREAM.subFee)]
+        ]),
+      actions:[{ label:'Close the laptop', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }]
+    });
   };
 
   /* ================= week one ================= */
@@ -601,16 +789,30 @@ HS.Game = function(){
     }
   }
 
-  G.moveHouse = function(){
+  G.moveHouse = function(to){
     const S = G.S;
-    const next = HS.HOUSING[S.housing + 1];
-    S.cash -= next.price; S.housing++;
+    const next = HS.HOUSING[to != null ? to : S.housing + 1];
+    if(!next) return;
+    S.cash -= next.deposit;
+    S.housing = next.id;
+    S.rentDueDay = S.day + HS.WEEK_DAYS;          /* first week in, first week free */
     refreshLandmarks(); HS.Audio.levelUp();
     ui.modal({ title:'YOU MOVE IN', tone:'good',
       body:'<p><b>' + next.name + '</b></p><p>' + next.desc + '</p>' +
-           '<p class="dim">Rent is now ' + HS.money(next.rent) + ' a week. Your home marker has moved.</p>',
+           '<p class="dim">Rent is ' + HS.money(next.rent) + ' a week, first due in seven days. ' +
+           'Your home marker has moved.</p>' + housingWarning(next),
       actions:[{ label:'Good', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }] });
   };
+
+  /* Cheap rooms come with a warning label, because the dice are real. */
+  function housingWarning(h){
+    if(!h.bad && !h.cut) return '';
+    const bits = [];
+    if(h.bad) bits.push('you will not always sleep through the night');
+    if(h.cut) bits.push('the power is not always on in the morning');
+    return '<p class="pbody" style="color:var(--red)">At this end of the market ' +
+           bits.join(', and ') + '.</p>';
+  }
   G.lawyerUp = function(fee){
     const S = G.S;
     S.cash -= fee; HS.addHeat(S, -25); G.spendTime(2);

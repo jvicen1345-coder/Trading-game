@@ -54,5 +54,12 @@ vendor/         three.js r128, vendored so the game runs offline
 - All textures and audio are generated at load. There are no asset files.
 - Balance is checked with a headless harness that plays full runs against the
   real pricing, calendar and rank code. Re-run it after any balance change.
-- Saves live in `localStorage` under `marketmaker_save_v2`. Changing the shape
+- Saves live in `localStorage` under `marketmaker_save_v3`. Changing the shape
   of the state object means bumping that version and invalidating saves.
+- A week is six days: five sessions and one Weekend. Saturday and Sunday are a
+  single day. Anything that counts days has to go through the helpers in
+  `tape.js` rather than assuming seven, and trading days still run five to the
+  week so contract expiries are unaffected.
+- Housing is rented at the bottom of the ladder and bought at the top. The
+  cheap rungs carry a per-night chance of broken sleep and a per-morning
+  chance of a power cut that cancels the session outright.
