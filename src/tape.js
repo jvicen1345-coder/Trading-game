@@ -1,7 +1,7 @@
 /* MARKET MAKER - the persistent market.
    Prices survive between sessions so a contract can outlive the day that
    opened it. One ticker is "the name of the week"; every other ticker still
-   drifts each night so an old LEAP can be marked and closed. */
+   drifts each night so a carried contract can be marked and closed. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';
@@ -87,21 +87,25 @@ HS.tickerPrice = function(S, sym){
 
 /* ---------------- contracts ----------------
    A contract settles at the CLOSE of trading day `expiryDay`. */
+/* Time is the thing you earn. A new trader gets today and nothing else,
+   which is the hardest way to trade and the fastest way to learn. The
+   first promotion on either path buys you the week, the second buys you
+   the fortnight. */
 HS.EXPIRY_KINDS = {
-  '0dte':   { id:'0dte',   name:'0DTE',   unlockRank:2, ivMult:1.35,
+  '0dte':   { id:'0dte',   name:'0DTE',   unlockRank:0, ivMult:1.35,
               blurb:'Dies at today\'s bell. All gamma, no mercy.' },
-  'weekly': { id:'weekly', name:'WEEKLY', unlockRank:0, ivMult:1.00,
-              blurb:'Runs to Friday\'s close. The everyday contract.' },
-  'leap':   { id:'leap',   name:'LEAP',   unlockRank:1, ivMult:0.80,
-              blurb:'A quarter of time value. One slot only, so choose well.' }
+  'weekly': { id:'weekly', name:'WEEKLY', unlockRank:2, ivMult:1.00,
+              blurb:'Runs to Friday\'s close. Room for a thesis to work.' },
+  'swing':  { id:'swing',  name:'SWING',  unlockRank:3, ivMult:0.86,
+              blurb:'A fortnight of time value. One slot only, so choose well.' }
 };
-HS.LEAP_DAYS = 60;                       // one quarter of trading days
+HS.SWING_DAYS = 10;                      // two trading weeks
 
 HS.expiryDayFor = function(kind, day){
   const td = HS.tradingDay(day);
   if(kind === '0dte')   return td;
   if(kind === 'weekly') return HS.fridayOfWeek(day);
-  return td + HS.LEAP_DAYS;
+  return td + HS.SWING_DAYS;
 };
 
 /* Days of life left, including the fraction of today still to run. */
@@ -137,8 +141,8 @@ HS.posName = function(p, day){
          (Math.round(p.strike * 100) / 100) + (p.isCall ? 'C' : 'P');
 };
 
-HS.hasLeap = function(S){
-  return (S.positions || []).some(p => p.kind === 'leap');
+HS.swingCount = function(S){
+  return (S.positions || []).filter(p => p.kind === 'swing').length;
 };
 
 /* Mark one position at the current tape, outside a live session. */

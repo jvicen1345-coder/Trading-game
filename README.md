@@ -49,13 +49,16 @@ Five rungs of calls and five of puts, from **DEEP ITM** (moves almost like the
 stock) through **ATM** (the balanced bet) to **FAR OTM** (a lottery ticket). The
 rungs are spaced by what that contract can actually move before it dies, so
 every one of them is worth trading whether you are on a one-hour 0DTE or a
-quarter-out LEAP.
+fortnight-out swing.
 
-Three expiries behave genuinely differently:
+Time is the thing you earn. A new trader gets today and nothing else:
 
-- **0DTE** dies at tonight's bell. All gamma, no mercy.
-- **WEEKLY** runs to Friday's close. The everyday contract.
-- **LEAP** lives a quarter and barely decays, but you only get one slot.
+- **0DTE** dies at tonight's bell. All gamma, no mercy. This is all you have
+  as an intern and through your first rank on either path.
+- **WEEKLY** runs to Friday's close. Your first promotion unlocks it, and it
+  becomes the everyday contract.
+- **SWING** is a fortnight of time value, unlocked by your second promotion.
+  Barely any decay, and one slot only, so choose well.
 
 Contracts outlive the closing bell, so the book you carry home matters. Anything
 still open sits in the **BOOK** tab and is marked against the live tape. Size is
@@ -93,7 +96,7 @@ risk and the street, and your room is yours to furnish, with every piece doing
 something small.
 
 Progress saves to `localStorage` automatically. A run to the top of either
-ladder is roughly ten to fourteen in-game weeks.
+ladder is roughly ten to fifteen in-game weeks.
 
 ## Layout
 

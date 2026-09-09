@@ -283,7 +283,15 @@ HS.load = function(){
     const raw = localStorage.getItem(SAVE_KEY);
     if(!raw) return null;
     const S = JSON.parse(raw);
-    return (S && S.version === 2) ? S : null;
+    if(!S || S.version !== 2) return null;
+    /* Saves from before the swing contract carry quarter-long LEAPs. Bring
+       them onto the new ladder rather than throwing the run away. */
+    (S.positions || []).forEach(p => {
+      if(p.kind !== 'leap') return;
+      p.kind = 'swing';
+      p.expiryDay = Math.min(p.expiryDay, HS.tradingDay(S.day) + HS.SWING_DAYS);
+    });
+    return S;
   }catch(e){ return null; }
 };
 HS.hasSave = function(){ try{ return !!localStorage.getItem(SAVE_KEY); }catch(e){ return false; } };

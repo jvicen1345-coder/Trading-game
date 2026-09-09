@@ -77,10 +77,11 @@ HS.Market.run = function(opts, done){
     M.regimeLeft = Math.max(M.regimeLeft, cfg.duration * 0.40);
   }
 
-  const expiries = ['0dte','weekly','leap']
+  const expiries = ['0dte','weekly','swing']
     .map(k => HS.EXPIRY_KINDS[k])
     .filter(e => cfg.rank >= e.unlockRank || cfg.ignoreRankGate);
-  if(!expiries.length) expiries.push(HS.EXPIRY_KINDS.weekly);
+  if(!expiries.length) expiries.push(HS.EXPIRY_KINDS['0dte']);
+  /* Open on the week once you have it. It is the everyday contract. */
   M.expIdx = Math.max(0, expiries.findIndex(e => e.id === 'weekly'));
 
   function bar(p){ return { o:p, h:p, l:p, c:p }; }
@@ -166,9 +167,9 @@ HS.Market.run = function(opts, done){
   function openPos(dir){
     if(!M.selected) return;
     const c = M.selected;
-    if(c.kind === 'leap' && HS.hasLeap(G) &&
-       G.positions.filter(p=>p.kind==='leap').length >= HS.leapSlots(G)){
-      flash('Your LEAP slot is already used.'); return;
+    if(c.kind === 'swing' && HS.swingCount(G) >= HS.swingSlots(G)){
+      flash(HS.swingSlots(G) > 1 ? 'Both swing slots are already used.'
+                                 : 'Your swing slot is already used.'); return;
     }
     const qty = sizedQty(c, dir < 0);
     if(qty < 1){ flash(dir > 0 ? 'Not enough cash for even one contract.'
@@ -273,13 +274,14 @@ HS.Market.run = function(opts, done){
   /* ---------- expiry tabs ---------- */
   const tabsEl = $('mkExpiries');
   tabsEl.innerHTML = '';
-  ['0dte','weekly','leap'].forEach(k => {
+  ['0dte','weekly','swing'].forEach(k => {
     const e = HS.EXPIRY_KINDS[k];
     const locked = cfg.rank < e.unlockRank && !cfg.ignoreRankGate;
     const b = HS.el('button', 'mk-exp' + (locked ? ' locked' : ''));
     const days = HS.expiryDayFor(k, G.day) - HS.tradingDay(G.day);
     b.innerHTML = '<span>' + e.name + '</span><small>' +
       (locked ? 'RANK ' + e.unlockRank : (k==='0dte' ? 'today' : days + 'd')) + '</small>';
+    b.title = locked ? e.name + ' unlocks at rank ' + e.unlockRank : e.blurb;
     b.dataset.exp = e.id;
     if(!locked) b.addEventListener('click', () => {
       M.expIdx = expiries.indexOf(e); M.selected = null;

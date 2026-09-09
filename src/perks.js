@@ -34,7 +34,7 @@ HS.PERK_TREES = [
       { id:'r4', name:'Margin Line',    x:0.22,y:0.60, needs:['r2'], req:{rank:3},
         desc:'Writing options ties up a third less margin.' },
       { id:'r5', name:'Second Slot',    x:0.78,y:0.60, needs:['r3'], req:{rank:3},
-        desc:'Hold two LEAPs at once instead of one.' },
+        desc:'Hold two swing contracts at once instead of one.' },
       { id:'r6', name:'Whale Hands',    x:0.5, y:0.88, needs:['r4','r5'], req:{rank:5},
         desc:'Another 60% of size on top of everything else.' }
     ]},
@@ -99,7 +99,7 @@ HS.sizeMul     = S => (HS.hasPerk(S,'r1') ? 1.3 : 1) * (HS.hasPerk(S,'r6') ? 1.6
 HS.feeMul      = S => HS.hasPerk(S,'r2') ? 0.67 : 1;
 HS.bustFloor   = S => HS.hasPerk(S,'r3') ? 0.25 : 0.40;
 HS.marginMul   = S => HS.hasPerk(S,'r4') ? 0.67 : 1;
-HS.leapSlots   = S => HS.hasPerk(S,'r5') ? 2 : 1;
+HS.swingSlots  = S => HS.hasPerk(S,'r5') ? 2 : 1;
 HS.reviewBonus = S => HS.hasPerk(S,'t6') ? 100 : (HS.hasPerk(S,'t2') ? 10 : 0);
 HS.alwaysIv    = S => HS.hasPerk(S,'t3');
 HS.alwaysGreeks= S => HS.hasPerk(S,'t5');

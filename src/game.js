@@ -719,10 +719,16 @@ HS.Game = function(){
     refreshLandmarks();
     const last = HS.PATHS[S.path] && !HS.nextRank(S);
     if(last){ finale(); return; }
+    /* Rank buys time on the chain, so say so plainly when it happens. */
+    const unlocked = Object.keys(HS.EXPIRY_KINDS)
+      .map(k => HS.EXPIRY_KINDS[k])
+      .filter(e => e.unlockRank === rank);
     ui.modal({
       title:'PROMOTED - ' + r.name.toUpperCase(), tone:'good',
       body:'<p>' + (text || 'You move up.') + '</p>' +
-           (r.salary ? '<p class="dim">Day rate is now <b>' + HS.money(r.salary) + '</b>.</p>' : ''),
+           (r.salary ? '<p class="dim">Day rate is now <b>' + HS.money(r.salary) + '</b>.</p>' : '') +
+           unlocked.map(e => '<p class="y"><b>' + e.name + ' contracts unlocked.</b> ' +
+                             e.blurb + '</p>').join(''),
       actions:[{ label:'Good', onClick:()=>{ ui.closeModal(); ui.syncHud(); } }]
     });
     HS.save(S);

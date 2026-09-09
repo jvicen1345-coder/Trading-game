@@ -9,16 +9,6 @@ const R = 0.04;                 // risk-free rate
 const TRADING_DAYS = 252;
 HS.CONTRACT_SIZE = 100;         // shares per contract, as in the real thing
 
-/* Expiries. `days` is in trading days; 0DTE dies at today's bell. */
-HS.EXPIRIES = [
-  { id:'weekly', name:'WEEKLY', label:'5d',  days:5,   ivMult:1.00, unlockRank:0,
-    blurb:'Five sessions of life. The everyday contract.' },
-  { id:'leap',   name:'LEAP',   label:'1y',  days:252, ivMult:0.80, unlockRank:2,
-    blurb:'A year out. Barely any theta, the closest thing to owning the stock.' },
-  { id:'0dte',   name:'0DTE',   label:'today', days:0, ivMult:1.35, unlockRank:4,
-    blurb:'Expires at the bell. All gamma, all theta, no mercy.' }
-];
-
 /* Cumulative normal (Abramowitz & Stegun 7.1.26). */
 function N(x){
   const a1=0.254829592, a2=-0.284496736, a3=1.421413741,
