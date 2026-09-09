@@ -342,9 +342,10 @@ HS.Game = function(){
     S.weekPnl = S.cash - S.weekStartCash;
 
     let repDelta = res.hitTarget ? 2.8 + S.rank * 0.3 : res.pnl > 0 ? 1.0 : res.busted ? -4 : -1.2;
-    if(S.path === 'solo') repDelta *= 0.5;              // nobody is watching you at home
+    // Trading alone still builds a record; funders and prop desks read it.
+    if(S.path === 'solo') repDelta *= 0.8;
     HS.addRep(S, repDelta);
-    HS.addSkill(S, res.pnl > 0 ? 0.6 : 0.35);
+    HS.addSkill(S, res.pnl > 0 ? 0.20 : 0.12);
 
     const rows = [
       ['Session P&L', HS.signed(res.pnl)],
@@ -503,6 +504,18 @@ HS.Game = function(){
   }
 
   /* ================= actions ================= */
+  /* The floor under a blown-up account: you can always sell your time. */
+  G.gigShift = function(){
+    const S = G.S;
+    G.spendTime(5);
+    HS.addEnergy(S, -HS.energyCost(S, 18));
+    const pay = 240 + Math.round(Math.random() * 160);
+    S.cash += pay;
+    HS.Audio.cash();
+    ui.toast('A day of honest work. ' + HS.money(pay) + '.', '');
+    ui.syncHud(); HS.save(S);
+  };
+
   G.trainGym = function(price){
     const S = G.S;
     S.cash -= price; G.spendTime(1.5);

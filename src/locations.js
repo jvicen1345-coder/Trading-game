@@ -34,10 +34,12 @@ HS.deskFor = function(S){
   return arr[HS.clamp(S.rank, 1, arr.length - 1)] || arr[1];
 };
 
+/* A full weekday - review, session, a class and the bar - costs about a whole
+   refreshed day's energy, so you have to choose what not to do. */
 const E = {
-  work:12, review:7, gym:11,
-  classA:7, classB:11, classC:16,
-  network:7, round:5, favour:3, tip:5, raise:10
+  work:24, review:14, gym:16,
+  classA:14, classB:22, classC:32,
+  network:14, round:10, favour:6, tip:10, raise:20
 };
 HS.ENERGY = E;
 
@@ -151,6 +153,15 @@ HS.Locations = function(game){
         'HOME DESK', 'Your account · ' + HS.PATHS.solo.name));
       actions.push(reviewAction(s));
     }
+    if(s.cash < 3000 && (!s.path || s.path === 'solo')){
+      actions.push({
+        label:'Take a gig shift', detail:'Deliveries, a bar shift, whatever pays today',
+        cost:'5h · ' + cost(s, 18) + ' energy',
+        disabled: s.energy < cost(s, 18) || s.hour > 18,
+        why: s.hour > 18 ? 'Too late to pick up a shift' : 'Not enough energy',
+        onClick: () => { ui().closePanel(); game.gigShift(); }
+      });
+    }
     actions.push({ label:'Save game', detail:'Write your progress to this browser',
       onClick: () => { HS.save(s); ui().toast('Progress saved.', 'good'); HS.Audio.cash(); } });
     return { title:h.name, sub:'HOME', accent:'#E8B85C', body, actions };
@@ -258,7 +269,7 @@ HS.Locations = function(game){
     const s = S();
     const isOpen = s.hour >= 6 && s.hour < 22;
     const atCap = s.maxEnergy >= HS.MAX_ENERGY_CAP;
-    const price = Math.round(40 + (s.maxEnergy - 100) * 12);
+    const price = Math.round(40 + (s.maxEnergy - 72) * 12);
     const body =
       para('Rubber, chalk and a man at the desk who has never once asked what you do for a living.') +
       '<div class="stats-grid">' +
@@ -270,7 +281,7 @@ HS.Locations = function(game){
     return {
       title:'Ironside Gym', sub:'STAMINA', accent:'#6BD4C0', body,
       actions:[{
-        label:'Train', detail:'+5 permanent stamina',
+        label:'Train', detail:'+6 permanent stamina',
         cost: HS.money(price) + ' · 1.5h · ' + cost(s, E.gym) + ' energy',
         disabled: !isOpen || atCap || s.cash < price || s.energy < cost(s,E.gym) || s.gymToday,
         why: !isOpen ? 'The gym is shut' : atCap ? 'You are as fit as this city gets'
@@ -392,9 +403,9 @@ HS.Locations = function(game){
     const isOpen = s.hour >= 16 && s.hour < 23;
     const disc = 1 - HS.roomBonus(s, 'study');
     const courses = [
-      { name:'Evening seminar',   skill:2.5, cash:Math.round(160*disc),   energy:E.classA, hours:2, min:0  },
-      { name:'Certification',     skill:5.5, cash:Math.round(2000*disc),  energy:E.classB, hours:3, min:24 },
-      { name:'Quant masterclass', skill:9.0, cash:Math.round(16000*disc), energy:E.classC, hours:4, min:48 }
+      { name:'Evening seminar',   skill:0.9, cash:Math.round(160*disc),   energy:E.classA, hours:2, min:0  },
+      { name:'Certification',     skill:1.9, cash:Math.round(2000*disc),  energy:E.classB, hours:3, min:24 },
+      { name:'Quant masterclass', skill:3.2, cash:Math.round(16000*disc), energy:E.classC, hours:4, min:48 }
     ];
     const body =
       para('Strip lights, plastic chairs, and the only people in this city who will explain anything to you honestly.') +

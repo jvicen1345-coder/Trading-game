@@ -12,7 +12,7 @@ HS.MARKET_OPEN  = 9.5;
 HS.MARKET_CLOSE = 16.0;
 HS.WAKE_HOUR    = 7.0;
 HS.CURFEW_HOUR  = 3.0;
-HS.MAX_ENERGY_CAP = 200;
+HS.MAX_ENERGY_CAP = 150;
 
 /* Going to bed early is worth something. */
 HS.REST = {
@@ -53,11 +53,11 @@ HS.PATHS = {
     blurb:'Trade your own account from the bedroom. No salary, no boss, no floor to hide on. Every dollar is yours and so is every hole.',
     ranks:[
       { i:1, name:'Retail Account',   salary:0, outfit:0, need:{} },
-      { i:2, name:'Consistent',       salary:0, outfit:1, need:{ skill:30, cash:40000 } },
-      { i:3, name:'Funded Trader',    salary:0, outfit:2, need:{ skill:48, cash:200000 } },
-      { i:4, name:'Prop Desk of One', salary:0, outfit:3, need:{ skill:66, cash:900000 } },
-      { i:5, name:'Whale',            salary:0, outfit:4, need:{ skill:80, cash:3000000 } },
-      { i:6, name:'THE LEGEND',       salary:0, outfit:4, need:{ skill:90, cash:9000000 } }
+      { i:2, name:'Consistent',       salary:0, outfit:1, need:{ skill:18, rep:10, cash:12000 } },
+      { i:3, name:'Funded Trader',    salary:0, outfit:2, need:{ skill:32, rep:22, cash:55000 } },
+      { i:4, name:'Prop Desk of One', salary:0, outfit:3, need:{ skill:52, rep:42, cash:900000 } },
+      { i:5, name:'Whale',            salary:0, outfit:4, need:{ skill:68, rep:55, cash:2500000 } },
+      { i:6, name:'THE LEGEND',       salary:0, outfit:4, need:{ skill:82, rep:64, cash:5000000 } }
     ]
   },
   desk: {
@@ -68,9 +68,9 @@ HS.PATHS = {
       { i:1, name:'Junior Broker',  salary:520,   outfit:1, need:{} },
       { i:2, name:'Broker',         salary:1400,  outfit:2, need:{ skill:28, rep:24 } },
       { i:3, name:'Senior Broker',  salary:3600,  outfit:2, need:{ skill:44, rep:40 } },
-      { i:4, name:'Vice President', salary:8200,  outfit:3, need:{ skill:60, rep:56, cash:150000 } },
-      { i:5, name:'Partner',        salary:22000, outfit:4, need:{ skill:74, rep:72, cash:900000 } },
-      { i:6, name:'HEAD OF THE FLOOR', salary:0,  outfit:4, need:{ skill:86, rep:88, brokers:12, cash:6000000 } }
+      { i:4, name:'Vice President', salary:8200,  outfit:3, need:{ skill:52, rep:52, cash:150000 } },
+      { i:5, name:'Partner',        salary:22000, outfit:4, need:{ skill:66, rep:66, cash:1500000 } },
+      { i:6, name:'HEAD OF THE FLOOR', salary:0,  outfit:4, need:{ skill:82, rep:84, brokers:8, cash:6000000 } }
     ]
   },
   fund: {
@@ -79,7 +79,7 @@ HS.PATHS = {
     blurb:'Kade\'s money, Kade\'s rules, and a mandate written loosely enough to cover almost anything. The city will learn your name the hard way.',
     ranks:[
       { i:1, name:'Analyst',        salary:9000, outfit:3, need:{} },
-      { i:2, name:'Portfolio Mgr',  salary:0,    outfit:3, need:{ aum:8000000 } },
+      { i:2, name:'Portfolio Mgr',  salary:0,    outfit:3, need:{ aum:8000000, rep:45 } },
       { i:3, name:'The Predator',   salary:0,    outfit:4, need:{ aum:45000000 } },
       { i:4, name:'THE VILLAIN',    salary:0,    outfit:4, need:{ aum:220000000 } }
     ]
@@ -113,7 +113,7 @@ HS.newState = function(){
     version:2,
     day:1, hour:8.0,
     cash:400, loan:0, loanRate:0.04,
-    rep:0, skill:5, heat:0, energy:92, maxEnergy:100,
+    rep:0, skill:5, heat:0, energy:66, maxEnergy:72,
     rest:1,
     path:null, rank:0, housing:0,
     contacts:0, tips:0,

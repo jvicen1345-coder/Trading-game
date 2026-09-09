@@ -50,7 +50,7 @@ HS.Market.run = function(opts, done){
     price: HS.tickerPrice(G, sym), tickSize: base.tick,
     open:0, bars:[], sub:0, tick:0,
     regime:null, regimeLeft:0, shock:0, shockLeft:0,
-    selected:null, qty:1, expIdx:0, tab:'chain',
+    selected:null, sizePct:0.25, expIdx:0, tab:'chain',
     acc:0, last:0, running:false, finished:false,
     trades:0, wins:0,
     peak:0, trough:Infinity,
@@ -141,9 +141,12 @@ HS.Market.run = function(opts, done){
   }
   const equity = () => G.cash + bookValue();
 
-  const feeEach = () => cfg.feePerContract * HS.feeMul(G);
+  /* A name on the street gets you a better ticket: up to 40% off commission. */
+  const feeEach = () => cfg.feePerContract * HS.feeMul(G) * (1 - Math.min(0.4, G.rep / 250));
   function buyingPower(){ return equity() * cfg.leverage * HS.sizeMul(G); }
 
+  /* Long premium is paid in cash — leverage cannot buy it. Leverage is margin,
+     so it only widens what you may write. */
   function maxQty(contract, isWrite){
     const q = quoteOf(contract);
     if(isWrite){
@@ -151,7 +154,12 @@ HS.Market.run = function(opts, done){
       return Math.max(0, Math.floor(buyingPower() * 0.5 / Math.max(1, margin)));
     }
     const cost = q.ask * CS + feeEach();
-    return Math.max(0, Math.floor(buyingPower() * 0.9 / Math.max(0.01, cost)));
+    return Math.max(0, Math.floor(G.cash * 0.92 / Math.max(0.01, cost)));
+  }
+  /* Contracts for the currently selected slice of capacity. */
+  function sizedQty(contract, isWrite){
+    const cap = maxQty(contract, isWrite);
+    return Math.max(cap >= 1 ? 1 : 0, Math.floor(cap * M.sizePct));
   }
 
   /* ---------- trading ---------- */
@@ -162,8 +170,9 @@ HS.Market.run = function(opts, done){
        G.positions.filter(p=>p.kind==='leap').length >= HS.leapSlots(G)){
       flash('Your LEAP slot is already used.'); return;
     }
-    const qty = Math.min(M.qty, maxQty(c, dir < 0));
-    if(qty < 1){ flash('Not enough buying power for that size.'); return; }
+    const qty = sizedQty(c, dir < 0);
+    if(qty < 1){ flash(dir > 0 ? 'Not enough cash for even one contract.'
+                               : 'Not enough margin to write that.'); return; }
     const q = quoteOf(c);
     const px = dir > 0 ? q.ask : q.bid;
     G.cash -= dir * px * CS * qty + feeEach() * qty;
@@ -510,7 +519,8 @@ HS.Market.run = function(opts, done){
       if(HS.showDelta(cfg.skill) || HS.alwaysGreeks(G)) bits.push('Δ ' + q.delta.toFixed(2));
       if(HS.showTheta(cfg.skill) || HS.alwaysGreeks(G)) bits.push('Θ ' + q.theta.toFixed(2) + '/day');
       if(HS.showIv(cfg.skill) || HS.alwaysIv(G)) bits.push('IV ' + (q.iv*100).toFixed(0) + '%');
-      bits.push(HS.money(q.ask*CS*M.qty) + ' for ' + M.qty);
+      const n = sizedQty(M.selected, false);
+      bits.push(n + ' contract' + (n===1?'':'s') + ' · ' + HS.money(q.ask*CS*n));
       $('mkPosInfo').textContent = bits.join(' · ');
     } else {
       card.className = 'mk-pos flat';
@@ -520,7 +530,7 @@ HS.Market.run = function(opts, done){
     $('mkBuy').disabled = !M.selected;
     $('mkSell').disabled = !M.selected;
     [...document.querySelectorAll('#mkQty .mk-size')].forEach(b =>
-      b.classList.toggle('sel', +b.dataset.qty === M.qty));
+      b.classList.toggle('sel', +b.dataset.pct === M.sizePct));
   }
 
   /* ---------- loop ---------- */
@@ -577,7 +587,7 @@ HS.Market.run = function(opts, done){
   const onBuy = () => M.running && openPos(1);
   const onSell = () => M.running && openPos(-1);
   const onClose = () => { if(M.running && G.positions.length) closeById(G.positions[G.positions.length-1].id, false); };
-  const onQty = e => { M.qty = +e.currentTarget.dataset.qty; HS.Audio.click(); sync(); };
+  const onQty = e => { M.sizePct = +e.currentTarget.dataset.pct; HS.Audio.click(); sync(); };
   function onKey(e){
     if(!M.running) return;
     const k = e.key.toLowerCase();
