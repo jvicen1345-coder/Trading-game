@@ -243,8 +243,11 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
 #help{z-index:70;}
 #help .card{width:min(620px,100%);}
 #title{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
-  padding:22px;background:radial-gradient(900px 520px at 50% 30%,rgba(139,107,255,.12),transparent 62%),#06080C;}
-#title .card{text-align:center;}
+  padding:22px;overflow:hidden;background:#06080C;}
+#title #skyline{position:absolute;inset:0;width:100%;height:100%;display:block;}
+#title .card{text-align:center;position:relative;z-index:1;
+  background:linear-gradient(170deg,rgba(21,26,37,.90),rgba(10,13,19,.94));
+  backdrop-filter:blur(10px);box-shadow:0 30px 90px rgba(0,0,0,.78);}
 .hero{width:76px;height:76px;margin:0 auto 16px;display:block;
   filter:drop-shadow(0 0 22px rgba(232,184,92,.34));}
 #title h1{margin:0;font-size:30px;letter-spacing:4px;font-weight:700;}
@@ -588,6 +591,7 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
 
 <!-- title -->
 <div id="title">
+  <canvas id="skyline"></canvas>
   <div class="card">
     <svg class="hero" viewBox="0 0 32 32"><use href="#mmLogo"/></svg>
     <h1>MARKET MAKER</h1>
@@ -705,6 +709,7 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
 <script src="src/perks.js"></script>
 <script src="src/room.js"></script>
 <script src="src/city.js"></script>
+<script src="src/skyline.js"></script>
 <script src="src/world.js"></script>
 <script src="src/player.js"></script>
 <script src="src/input.js"></script>
@@ -722,8 +727,18 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
   const title = HS.$('title');
   if(HS.hasSave()) HS.$('btnContinue').style.display = '';
 
+  /* The backdrop runs only while the title is up, and gives the frame back
+     to the renderer the moment the player is in the city. */
+  const sky = HS.Skyline(HS.$('skyline'));
+  sky.start();
+  document.addEventListener('visibilitychange', () => {
+    if(title.style.display === 'none') return;
+    if(document.hidden) sky.stop(); else sky.start();
+  });
+
   HS.$('btnNew').addEventListener('click', () => {
     HS.Audio.init(); HS.Audio.resume(); HS.Audio.enter();
+    sky.stop();
     title.style.display = 'none';
     game.startNew();
   });
@@ -731,6 +746,7 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
     HS.Audio.init(); HS.Audio.resume(); HS.Audio.enter();
     const S = HS.load();
     if(!S){ HS.$('btnContinue').style.display = 'none'; return; }
+    sky.stop();
     title.style.display = 'none';
     game.startLoaded(S);
   });

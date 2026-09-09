@@ -37,6 +37,7 @@ src/game.js     main loop, consequences, endings
 src/perks.js    the three perk constellations
 src/room.js     your room and its furniture
 src/city.js     procedural city, street props, traffic
+src/skyline.js  animated title screen backdrop
 src/world.js    renderer, camera, day/night
 src/player.js   avatar, movement, collision
 src/ui.js       HUD, panels, minimap

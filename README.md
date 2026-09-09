@@ -109,6 +109,7 @@ src/market.js       the trading session
 src/perks.js        the three perk constellations
 src/room.js         your room and its furniture
 src/city.js         procedural city, street props, traffic
+src/skyline.js      animated title screen backdrop
 src/world.js        renderer, follow camera, day/night lighting
 src/player.js       avatar, WASD movement, collision
 src/input.js        keyboard and touch
