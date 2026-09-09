@@ -74,7 +74,9 @@ src/game.js         main loop, consequences, endings
 The city is generated from a fixed seed, so the map is the same every run.
 All textures are drawn to canvas at load — there are no image assets.
 
-## Also in this repo
+## Scope
 
-`autopilot/index.html` is the earlier Heatseeker Autopilot trading dashboard.
-It is unrelated to the game and is kept only for reference.
+This repository is the game and nothing else. There is no live trading, no
+broker connection, no API keys and no market data. Every price you see is
+generated locally by `src/tape.js` and priced by `src/options.js` — it is a
+simulation for play, not a tool for trading real money.
