@@ -356,31 +356,52 @@ HS.Market.run = function(opts, done){
   renderChain();
 
   /* ---------- book ---------- */
+  /* The book is marked to market every frame, but the rows are built once.
+     Tearing them down and rebuilding them mid-frame destroys the CLOSE
+     button between mousedown and mouseup, so the click never lands. */
   const bookEl = $('mkBook');
+  let bookRows = [], bookKey = null;
+
   function renderBook(){
+    const key = G.positions.map(p => p.id).join(',');
+    if(key === bookKey){ updateBook(); return; }
+    bookKey = key;
+    bookRows = [];
     bookEl.innerHTML = '';
+    $('mkBookCount').textContent = String(G.positions.length);
+
     if(!G.positions.length){
       bookEl.appendChild(HS.el('div','bk-empty','Nothing open. Pick a contract from the chain.'));
-      $('mkBookCount').textContent = '0';
       return;
     }
-    $('mkBookCount').textContent = String(G.positions.length);
     G.positions.forEach(p => {
-      const q = quoteOf(p);
-      const pnl = p.qty * (q.mid - p.entry) * CS;
       const row = HS.el('div','bk-row' + (p.qty>0?' long':' short'));
-      const dying = p.expiryDay <= HS.tradingDay(G.day);
-      row.innerHTML =
-        '<div class="bk-id"><b>' + (p.qty>0?'+':'') + p.qty + ' ' + HS.posName(p, G.day) + '</b>' +
-        '<em>' + p.moneyness + ' · ' + (dying ? '<span class="dying">expires at the bell</span>'
-                                              : HS.expiryLabel(p, G.day) + ' left') + '</em></div>' +
-        '<div class="bk-pnl ' + (pnl>=0?'g':'r') + '">' + HS.signed(pnl) + '</div>';
+      const id  = HS.el('div','bk-id',
+        '<b>' + (p.qty>0?'+':'') + p.qty + ' ' + HS.posName(p, G.day) + '</b><em></em>');
+      const pnl = HS.el('div','bk-pnl');
       const btn = HS.el('button','bk-x','CLOSE');
       btn.addEventListener('click', () => closeById(p.id, false));
-      row.appendChild(btn);
+      row.appendChild(id); row.appendChild(pnl); row.appendChild(btn);
       bookEl.appendChild(row);
+      bookRows.push({ p:p, pnl:pnl, sub:id.querySelector('em') });
+    });
+    updateBook();
+  }
+
+  /* Numbers only. Every node here already exists. */
+  function updateBook(){
+    bookRows.forEach(r => {
+      const p = r.p;
+      const net = p.qty * (quoteOf(p).mid - p.entry) * CS;
+      r.pnl.textContent = HS.signed(net);
+      r.pnl.className = 'bk-pnl ' + (net >= 0 ? 'g' : 'r');
+      r.sub.innerHTML = p.moneyness + ' \u00b7 ' +
+        (p.expiryDay <= HS.tradingDay(G.day)
+          ? '<span class="dying">expires at the bell</span>'
+          : HS.expiryLabel(p, G.day) + ' left');
     });
   }
+
   renderBook();
 
   $('mkTabChain').addEventListener('click', () => setTab('chain'));
