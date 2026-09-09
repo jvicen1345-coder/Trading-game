@@ -150,23 +150,42 @@ The solo route is not really about trading alone. It is about proving the
 floor was wrong to be a floor, which means building one of your own out of
 people nobody else would hire.
 
-From **Funded Trader** you can recruit, and where you find somebody shapes
-what they are: the channel sends you people who can talk, the Exchange sends
-you people who can trade, the bar sends you a bit of both. Everyone has
-**Tape**, **Screen** and **Nerve**, and none of them is good at all three.
+From **Funded Trader** you can recruit. There are **ten people in this city**
+worth knowing and **five chairs**, so the firm you end up with is a set of
+choices rather than a pile of hires.
 
-You do not get to see those numbers. You get a range, and how wide it is
+**Five are green.** Al Gorithm, Nancy Pelosini, Teddy Rosevelt, Angela Merkup
+and Justin Trudough are much of a muchness on paper, around forty across the
+board, and each has one thing of their own: Al learns from every chart review
+you do, Nancy makes the bar pay half again as well, Teddy never minds that you
+are not around, Angela's nerve counts twice on a week that goes wrong, and
+Justin turns a following into subscribers faster than you can. Train them at
+the office and they go whichever way you point them.
+
+**Three are already good.** Winston Churnwell adds a quarter to what the desks
+clear and thinks a webcam is a confession. Margaret Hatcher adds a third and a
+little heat every week she is there. Gordon Brownout buys you five more points
+of rope before the desk pulls your book. None of them came here for a lesson,
+and it takes three proper conversations before any training takes. Whether a
+conversation lands is your record and your name against their opinion of both.
+
+**Two are better than you.** Chester Arbitrage doubles what the desks clear and
+takes a quarter of it, up and down, so on a bad week you are paying him to have
+lost you money. Barack Obalance means the desks never lose in a week and never
+make a killing either. They will not sit in the same building, so taking one
+shuts the door on the other for good.
+
+You do not see anyone's real numbers. You get a range, and how wide it is
 depends on you: a new Funded Trader reads tape to within about ten points and
 nerve to within twenty, while somebody with skill and a name on the street
 reads both to within two or three. Nerve is always the vaguest, because nerve
 only shows on a bad day, and a losing week on the desks is what finally tells
 you what you bought.
 
-Then you haggle. They open about thirty percent above what they are worth, and
-your counter is worked out from **what you think they are worth**, not what
-they are worth. Meet their number and they start keen. Offer what you make them
-worth and they usually take it. Try it on and they may walk, which is how a bad
-read costs you somebody good.
+Then you haggle. They open above what they are worth, and your counter is
+worked out from **what you think they are worth**. Meet their number and they
+start keen. Offer what you make them worth and they usually take it. Try it on
+and they may walk, which is how a bad read costs you somebody good.
 
 Then the address. A vacant floor becomes **The Back Room** above a laundrette,
 and eventually **The High-Rise**, forty-one storeys up and in sight of the firm

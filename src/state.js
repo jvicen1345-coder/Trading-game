@@ -130,9 +130,9 @@ HS.canStream  = S => S.path === 'solo' && S.rank >= HS.STREAM.unlockRank;
 HS.OFFICES = [
   { id:0, name:'No office',    seats:2,  price:0,        upkeep:0,
     desc:'A bedroom, a laptop, and whoever will answer a message.' },
-  { id:1, name:'The Back Room', seats:5,  price:180000,   upkeep:2400,
+  { id:1, name:'The Back Room', seats:4,  price:180000,   upkeep:2400,
     desc:'Above a laundrette, four desks, one window that does not open and a kettle.' },
-  { id:2, name:'The High-Rise', seats:12, price:2600000,  upkeep:26000,
+  { id:2, name:'The High-Rise', seats:5,  price:2600000,  upkeep:26000,
     desc:'Forty-first floor, your name in the lobby directory, and a view of the firm that did not want you.' }
 ];
 
@@ -145,19 +145,105 @@ HS.ROLES = {
   bench:    { id:'bench',    name:'Bench',    blurb:'On the payroll, doing nothing' }
 };
 
-const RECRUIT_FIRST = ['Al','Justin','Margaret','Winston','Angela','Nancy','Teddy','Jimmy',
-                       'Herbert','Barack','Gordon','Calvin','Grover','Chester','Millard'];
-const RECRUIT_LAST  = ['Gorithm','Trudough','Hatcher','Churnwell','Merkup','Pelosini','Rosevelt',
-                       'Charter','Hoovered','Obalance','Brownout','Cooldge','Clearing',
-                       'Arbitrage','Fillmargin'];
-
-/* Where you found them shapes what they are good at. The channel sends you
-   people who can talk; the floor sends you people who can trade. */
+/* Where you found them shapes what they are. The channel sends people who can
+   talk; the floor sends people who can trade. */
 HS.RECRUIT_SOURCES = {
-  channel:  { name:'from the channel', tape:-8, screen:18, nerve:-4 },
-  bar:      { name:'from the bar',     tape:2,  screen:6,  nerve:-2 },
-  exchange: { name:'off the floor',    tape:16, screen:-10, nerve:8 }
+  channel:  { name:'from the channel' },
+  bar:      { name:'from the bar' },
+  exchange: { name:'off the floor' }
 };
+
+/* ------------------------------------------------------------------
+   THE CAST
+   Ten people exist and you may seat five. Five of them are ordinary and
+   will become whatever you make them. Three are already good and have no
+   intention of changing, though they can be talked round. Two are better
+   than you and will not change at all, and the pair of them will not sit
+   in the same room, so one of them is a door you close.
+   ------------------------------------------------------------------ */
+HS.TIERS = {
+  basic: { name:'Green',    train:1.0,  blurb:'Will become whatever you make them.' },
+  sharp: { name:'Seasoned', train:0.45, blurb:'Set in their ways, and not immovable.' },
+  god:   { name:'Untouchable', train:0, blurb:'Will not be changed by you or anyone.' }
+};
+
+HS.CAST = [
+  /* ---- five green, similar on paper, each with one thing of their own ---- */
+  { id:'gorithm', name:'Al Gorithm', tier:'basic', from:'exchange', need:{},
+    tape:44, screen:31, nerve:42, wage:2100, special:'quant',
+    line:'Writes his own scanners and will explain them to anybody who stands still.',
+    perk:'Learns from your chart reviews: every review you do adds to his tape.' },
+  { id:'pelosini', name:'Nancy Pelosini', tier:'basic', from:'bar', need:{},
+    tape:38, screen:46, nerve:39, wage:2200, special:'connected',
+    line:'Knows everybody in the room and which of them is worth knowing.',
+    perk:'Working a room at the bar earns you half again as much reputation.' },
+  { id:'rosevelt', name:'Teddy Rosevelt', tier:'basic', from:'exchange', need:{},
+    tape:41, screen:34, nerve:47, wage:2000, special:'grinder',
+    line:'First in, last out, and has never once asked what the plan is.',
+    perk:'Never loses heart when you are too busy to come in.' },
+  { id:'merkup', name:'Angela Merkup', tier:'basic', from:'bar', need:{},
+    tape:40, screen:36, nerve:49, wage:2250, special:'steady',
+    line:'Has not raised her voice in eleven years of doing this.',
+    perk:'Her nerve counts twice when a week goes against the desks.' },
+  { id:'trudough', name:'Justin Trudough', tier:'basic', from:'channel', need:{},
+    tape:33, screen:52, nerve:36, wage:2150, special:'camera',
+    line:'Extremely watchable and only occasionally right, which turns out to be enough.',
+    perk:'Converts a following into subscribers half again as fast.' },
+
+  /* ---- three who are already good and know it ---- */
+  { id:'churnwell', name:'Winston Churnwell', tier:'sharp', from:'exchange', need:{ rep:38 },
+    tape:74, screen:22, nerve:63, wage:5200, special:'oldschool',
+    line:'Traded the pit for nineteen years and thinks a webcam is a confession.',
+    perk:'Adds a quarter to what the desks clear, and will not go near the channel.' },
+  { id:'hatcher', name:'Margaret Hatcher', tier:'sharp', from:'bar', need:{ rep:45 },
+    tape:78, screen:55, nerve:58, wage:6400, special:'ruthless',
+    line:'Has been asked to leave two firms and was profitable at both.',
+    perk:'Adds a third to the desks and a little heat every week she is here.' },
+  { id:'brownout', name:'Gordon Brownout', tier:'sharp', from:'exchange', need:{ rep:40 },
+    tape:52, screen:28, nerve:88, wage:5000, special:'riskman',
+    line:'Ran risk at a bank that no longer exists, which he mentions often.',
+    perk:'Buys you five more points of rope before the desk pulls your book.' },
+
+  /* ---- two who are better than you, and cannot stand each other ---- */
+  { id:'arbitrage', name:'Chester Arbitrage', tier:'god', from:'exchange',
+    need:{ rep:62, office:2 }, rival:'obalance',
+    tape:96, screen:44, nerve:71, wage:0, special:'alpha',
+    line:'Nobody knows where he was before this and nobody asks him twice.',
+    perk:'Doubles what the desks clear and takes a quarter of it, up and down.' },
+  { id:'obalance', name:'Barack Obalance', tier:'god', from:'channel',
+    need:{ rep:58, followers:20000 }, rival:'arbitrage',
+    tape:88, screen:79, nerve:94, wage:11000, special:'machine',
+    line:'Speaks in whole paragraphs and has not had a losing month since 2011.',
+    perk:'The desks never lose in a week, and never make a killing either.' }
+];
+
+HS.castOf   = id => HS.CAST.find(c => c.id === id);
+HS.hasHired = (S, id) => HS.teamOf(S).some(e => e.id === id);
+HS.isMet    = (S, id) => (S.met || []).indexOf(id) >= 0;
+HS.isLost   = (S, id) => (S.lost || []).indexOf(id) >= 0;
+HS.TEAM_CAP = 5;
+
+/* Who might turn up where, given who you are and who you have already met. */
+HS.available = function(S, source){
+  return HS.CAST.filter(c => c.from === source && !HS.isMet(S, c.id) && !HS.isLost(S, c.id) &&
+    (c.need.rep == null || S.rep >= c.need.rep) &&
+    (c.need.office == null || (S.office || 0) >= c.need.office) &&
+    (c.need.followers == null || (S.stream ? S.stream.followers : 0) >= c.need.followers));
+};
+
+/* Somebody you have met but not seated. */
+HS.metNotHired = S => (S.met || []).filter(id => !HS.hasHired(S, id) && !HS.isLost(S, id))
+                                  .map(HS.castOf).filter(Boolean);
+
+/* Turning a name in the cast into somebody on your payroll. */
+HS.employ = function(c, wage, morale){
+  return { id:c.id, name:c.name, tier:c.tier, from:c.from, special:c.special,
+           tape:c.tape, screen:c.screen, nerve:c.nerve,
+           wage:wage, morale:morale, role:'trader', known:false, trained:0, talked:0 };
+};
+
+/* Does anybody on the payroll carry this? */
+HS.teamHas = (S, special) => HS.teamOf(S).some(e => e.special === special);
 
 /* How well you can read a stranger. Skill is the tape and reputation is the
    room, and both of them are how you tell talent from a good afternoon. Nerve
@@ -168,8 +254,7 @@ HS.readSpread = function(S, stat){
 };
 
 /* The band you are shown, which is the truth blurred by how good you are at
-   this. It is drawn once and kept, so staring at somebody does not resample
-   them. */
+   this. Drawn once and kept, so staring at somebody does not resample them. */
 function estimate(S, e, stat){
   const spread = HS.readSpread(S, stat);
   const off = Math.round((Math.random() - 0.5) * spread);
@@ -181,46 +266,40 @@ function estimate(S, e, stat){
 /* What somebody is actually worth a week, given what they can actually do. */
 HS.recruitWorth = e => Math.round((e.tape * 26 + e.screen * 20 + e.nerve * 14) * 0.9);
 
-/* Candidate quality tracks your standing. A nobody attracts nobody. */
-HS.rollRecruit = function(S, source){
-  const src = HS.RECRUIT_SOURCES[source];
-  const pull = Math.min(34, S.rep * 0.32 + Math.log10(1 + (S.stream ? S.stream.followers : 0)) * 6);
-  const roll = () => HS.clamp(18 + pull + (Math.random() * 34 - 12), 5, 96);
-  const e = {
-    id: 'e' + Math.random().toString(36).slice(2, 8),
-    name: RECRUIT_FIRST[Math.floor(Math.random()*RECRUIT_FIRST.length)] + ' ' +
-          RECRUIT_LAST[Math.floor(Math.random()*RECRUIT_LAST.length)],
-    from: source,
-    tape:   Math.round(HS.clamp(roll() + src.tape, 5, 96)),
-    screen: Math.round(HS.clamp(roll() + src.screen, 5, 96)),
-    nerve:  Math.round(HS.clamp(roll() + src.nerve, 5, 96)),
-    morale: 74, role:'trader', known:false
-  };
-  e.worth = HS.recruitWorth(e);
-  e.wage = e.worth;
-  /* They open above what they are worth, and they have a number below which
-     they walk. A name on the street brings that number down. */
-  e.ask   = Math.round(e.worth * (1.16 + Math.random() * 0.26));
+/* Meeting one of the ten. The numbers are theirs; the reading is yours, and
+   what they will settle for depends on your name. */
+HS.readCandidate = function(S, c){
+  const e = Object.assign({}, c);
+  e.worth = c.wage || HS.recruitWorth(c);
+  e.ask   = Math.round(e.worth * (1.14 + Math.random() * 0.22));
   e.floor = Math.round(e.worth * (0.86 + Math.random() * 0.14) *
                        (1 - Math.min(0.18, S.rep / 400)));
-  e.est = { tape: estimate(S, e, 'tape'), screen: estimate(S, e, 'screen'),
-            nerve: estimate(S, e, 'nerve') };
+  e.est = { tape: estimate(S, c, 'tape'), screen: estimate(S, c, 'screen'),
+            nerve: estimate(S, c, 'nerve') };
   return e;
 };
 
-/* What you see on a card: the band while they are a stranger, the number once
-   a bad week has told you the truth. */
+/* What you see: the band while they are a stranger, the number once a bad
+   week has told you the truth. */
 HS.statText = function(e, stat){
   if(e.known || !e.est) return String(e[stat]);
   const b = e.est[stat];
   return b.lo + ' to ' + b.hi;
 };
 
-HS.teamSeats  = S => HS.OFFICES[S.office || 0].seats;
+HS.teamSeats  = S => Math.min(HS.TEAM_CAP, HS.OFFICES[S.office || 0].seats);
 HS.teamOf     = S => S.team || [];
 HS.streamerOf = S => HS.teamOf(S).find(e => e.role === 'streamer') || null;
 HS.tradersOf  = S => HS.teamOf(S).filter(e => e.role === 'trader');
 HS.teamWages  = S => HS.teamOf(S).reduce((n, e) => n + e.wage, 0);
+
+/* What each of them is actually worth having around. */
+HS.deskMul   = S => (HS.teamHas(S,'oldschool') ? 1.25 : 1) * (HS.teamHas(S,'ruthless') ? 1.33 : 1);
+HS.bustBonus = S => HS.teamHas(S,'riskman') ? 0.05 : 0;
+HS.netMul    = S => HS.teamHas(S,'connected') ? 1.5 : 1;
+HS.convertMul= S => HS.teamHas(S,'camera') ? 1.5 : 1;
+HS.hasAlpha  = S => HS.teamHas(S,'alpha');
+HS.hasMachine= S => HS.teamHas(S,'machine');
 
 /* ------------------------------------------------------------------
    THE RIVAL
@@ -278,7 +357,7 @@ HS.PATHS = {
       { i:2, name:'Consistent',      salary:0, outfit:1, need:{ skill:18, rep:10, cash:12000 } },
       { i:3, name:'Funded Trader',   salary:0, outfit:2, need:{ skill:32, rep:22, cash:55000 } },
       { i:4, name:'The Back Room',   salary:0, outfit:3, need:{ skill:48, rep:40, office:1, team:3 } },
-      { i:5, name:'The High-Rise',   salary:0, outfit:4, need:{ skill:62, rep:55, office:2, team:7 } },
+      { i:5, name:'The High-Rise',   salary:0, outfit:4, need:{ skill:62, rep:55, office:2, team:5 } },
       { i:6, name:'THE WOLF',        salary:0, outfit:4, need:{ skill:74, rep:66, quarters:4 } }
     ]
   },
@@ -351,7 +430,7 @@ HS.newState = function(){
     weekEdge:null,
     blackout:false,
     stream:{ on:false, live:false, followers:0, subs:0, streamed:0, viral:0, lastPaid:0, delegated:false },
-    team:[], office:0, checkedIn:0,
+    team:[], met:[], lost:[], office:0, checkedIn:0,
     rival:null,
     blue:{ met:false, skill:0, on:false },
     rentDueDay:7,          // Monday of week two, when you get a place of your own
@@ -462,9 +541,18 @@ HS.rollDay = function(S, ev){
       HS.tradersOf(S).forEach(e => {
         const heart = 0.45 + (e.morale / 100) * 0.75;
         const edge = (e.tape / 100) * heart;
+        /* Angela does not flinch, and it shows on the weeks that go wrong. */
+        const nerve = e.special === 'steady' ? Math.min(100, e.nerve * 2) : e.nerve;
         desk += S.cash * 0.012 * edge * (0.4 + Math.random() * 1.5) -
-                S.cash * 0.006 * (1 - e.nerve / 100);
+                S.cash * 0.006 * (1 - nerve / 100);
       });
+      desk *= HS.deskMul(S);
+      /* Chester doubles the book and takes a quarter of whatever it does, which
+         on a bad week means he is paid to have lost you money. */
+      let cut = 0;
+      if(HS.hasAlpha(S)){ desk *= 2; cut = Math.round(desk * 0.25); desk -= cut; }
+      /* Barack does not lose. He does not win big either. */
+      if(HS.hasMachine(S)) desk = desk < 0 ? 0 : desk * 0.55;
       /* A week that went against them is the only real interview. Whatever you
          thought you were buying, now you know. */
       if(desk < 0){
@@ -479,10 +567,15 @@ HS.rollDay = function(S, ev){
         S.cash += desk;
         ev.push({ kind: desk >= 0 ? 'good' : 'bad',
                   text:'The desks cleared ' + HS.signed(desk) + ' this week.' });
+        if(cut) ev.push({ kind:'bill', text:'Chester Arbitrage took his quarter. ' +
+                          HS.money(cut) + ' of it.' });
+        if(HS.hasMachine(S)) ev.push({ kind:'', text:'Nothing dramatic happened, which is ' +
+                          'what you are paying Barack Obalance for.' });
       }
       /* Nobody works hard for somebody who never comes in. */
       const seen = S.day - (S.checkedIn || 0) <= HS.WEEK_DAYS + 1;
       HS.teamOf(S).forEach(e => {
+        if(!seen && e.special === 'grinder') return;      /* Teddy does not mind */
         e.morale = HS.clamp(e.morale + (seen ? 3 : -11), 0, 100);
       });
       const gone = HS.teamOf(S).filter(e => e.morale <= 6);
@@ -509,7 +602,8 @@ HS.rollDay = function(S, ev){
         const carry = (sm.screen / 100) * (0.5 + sm.morale / 160);
         const grew = Math.round(st.followers * 0.09 * carry + 60 * carry);
         st.followers += grew;
-        st.subs += HS.streamConvert(S, S.weekPnl / Math.max(1, S.weekStartCash));
+        st.subs += Math.round(HS.streamConvert(S, S.weekPnl / Math.max(1, S.weekStartCash)) *
+                              HS.convertMul(S));
         ev.push({ kind:'good', text: sm.name + ' put the week out. ' +
                   grew.toLocaleString() + ' new followers.' });
       }

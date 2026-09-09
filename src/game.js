@@ -476,54 +476,81 @@ HS.Game = function(){
   /* ================= the firm ================= */
   G.recruit = function(source){
     const S = G.S;
-    const cand = HS.rollRecruit(S, source);
-    const src = HS.RECRUIT_SOURCES[source];
     G.spendTime(2);
     HS.addEnergy(S, -HS.energyCost(S, HS.ENERGY.network));
-    meetCandidate(cand, src);
+    const pool = HS.available(S, source);
+    if(!pool.length){
+      ui.modal({ title:'NOBODY TONIGHT',
+        body:'<p>Plenty of talk, nobody worth a second conversation. The people who are ' +
+             'any good are working, and the ones who are not are here.</p>' +
+             '<p class="pbody dim">Come back when your name is worth more.</p>',
+        actions:[{ label:'Fair enough', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }] });
+      return;
+    }
+    const c = pool[Math.floor(Math.random() * pool.length)];
+    S.met = (S.met || []).concat([c.id]);
+    meetCandidate(HS.readCandidate(S, c), c);
   };
 
-  function meetCandidate(cand, src){
+  /* Somebody you have already met, seen again later at the office. */
+  G.rehire = function(id){
+    const S = G.S;
+    const c = HS.castOf(id);
+    if(c) meetCandidate(HS.readCandidate(S, c), c);
+  };
+
+  function meetCandidate(cand, c){
     const S = G.S;
     const seats = HS.teamSeats(S);
     const full = HS.teamOf(S).length >= seats;
+    const tier = HS.TIERS[c.tier];
 
-    /* Your counter is worked out from what you think they are worth, not from
-       what they are worth. Misread somebody and you will lowball a good one
-       or hand a fortune to a bad one, and either way it was your read. */
+    /* Your counter comes from what you think they are worth, not what they are
+       worth. Misread somebody and it was your read that lost them. */
     const guess = HS.recruitWorth({ tape:cand.est.tape.mid, screen:cand.est.screen.mid,
                                     nerve:cand.est.nerve.mid });
-    const fair = Math.round(guess);
-    const low  = Math.round(guess * 0.82);
+    const fair = Math.round(Math.max(guess, cand.worth * 0.7));
+    const low  = Math.round(fair * 0.82);
     const band = st => HS.statText(cand, st);
+
+    /* The two at the top will not share a floor. Taking one shuts the door. */
+    const rival = c.rival ? HS.castOf(c.rival) : null;
+    const rivalOn = rival && HS.hasHired(S, rival.id);
 
     const hire = (wage, moraleAt, note) => {
       ui.closeModal();
-      cand.wage = wage; cand.morale = moraleAt;
-      S.team = HS.teamOf(S); S.team.push(cand);
+      const e = HS.employ(c, wage, moraleAt);
+      S.team = HS.teamOf(S); S.team.push(e);
+      if(rival && !HS.isLost(S, rival.id)){
+        S.lost = (S.lost || []).concat([rival.id]);
+        S.met = (S.met || []).filter(id => id !== rival.id);
+      }
       HS.Audio.levelUp();
-      ui.toast(cand.name + ' is on the payroll at ' + HS.money(wage) + ' a week. ' + note, 'good');
+      ui.toast(c.name + ' is on the payroll at ' + HS.money(wage) + ' a week. ' + note, 'good');
+      if(rival) ui.toast(rival.name + ' will not be taking your calls.', 'bad');
       ui.syncHud(); HS.save(S);
     };
     const walk = () => {
-      ui.closeModal();
-      HS.Audio.loss();
-      ui.toast(cand.name + ' thanks you for your time and does not call back.', 'bad');
+      ui.closeModal(); HS.Audio.loss();
+      ui.toast(c.name + ' thanks you for your time. You can try again another day.', 'bad');
       ui.syncHud(); HS.save(S);
     };
     const offer = (amount, moraleAt) => {
       if(amount >= cand.floor) return hire(amount, moraleAt, 'They took it.');
-      /* A hair under and they take it with a face on. Properly under and they
-         are gone. */
       if(amount >= cand.floor * 0.95) return hire(amount, Math.max(38, moraleAt - 22),
         'They took it, and they will remember it.');
       walk();
     };
 
     const acts = [];
-    if(full){
-      acts.push({ label:'No room for them',
-        detail: HS.OFFICES[S.office||0].name + ' seats ' + seats, disabled:true, why:'Nowhere to put them' });
+    if(rivalOn){
+      acts.push({ label:'They will not work with ' + rival.name, disabled:true,
+        detail:'One of them was always going to be a door you closed',
+        why:'You already made that choice' });
+    } else if(full){
+      acts.push({ label:'No seat for them', disabled:true,
+        detail: HS.OFFICES[S.office||0].name + ' seats ' + seats + ' and you have ' +
+                HS.teamOf(S).length, why:'Let somebody go first, or take a bigger floor' });
     } else {
       acts.push({ label:'Meet their number', detail:'They start keen',
         cost: HS.money(cand.ask) + ' a week',
@@ -538,21 +565,24 @@ HS.Game = function(){
         disabled: S.cash < low * 2, why:'You cannot cover two weeks of that',
         onClick:()=>offer(low, 60) });
     }
-    acts.push({ label:'Let them go', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } });
+    acts.push({ label:'Leave it for now',
+      onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } });
 
     ui.modal({
-      title:'SOMEONE WORTH A CONVERSATION',
-      sub: src.name.toUpperCase(),
-      body:'<p>You get talking to somebody ' + src.name + '. Half an hour is not long enough ' +
-        'to know anybody, and half an hour is what you have.</p>' +
-        '<p class="pbody"><b>' + cand.name + '</b></p>' +
+      title: c.name.toUpperCase(),
+      sub: tier.name.toUpperCase() + ' - ' + HS.RECRUIT_SOURCES[c.from].name.toUpperCase(),
+      body:'<p>' + c.line + '</p>' +
         tallies([
           ['Tape', band('tape')], ['Screen', band('screen')], ['Nerve', band('nerve')],
           ['Asking', HS.money(cand.ask) + ' a week']
         ]) +
-        '<p class="pbody dim">You are reading them, not measuring them. Skill and a name on ' +
-        'the street narrow that down; nerve you will not really know until a day goes against ' +
-        'them.</p>',
+        '<p class="pbody y">' + c.perk + '</p>' +
+        '<p class="pbody dim">' + tier.blurb + ' ' +
+          (c.tier === 'basic' ? 'Train them at the office and they will go whichever way you point them.'
+           : c.tier === 'sharp' ? 'You would have to talk them round before any of it took.'
+           : 'Nothing you say will move them, and they do not need moving.') + '</p>' +
+        (rival && !rivalOn ? '<p class="pbody" style="color:var(--red)">Will not work in the ' +
+          'same building as <b>' + rival.name + '</b>. Take one and the other is gone.</p>' : ''),
       actions: acts
     });
   }
@@ -584,20 +614,35 @@ HS.Game = function(){
     }
     const rows = team.map(e =>
       '<button class="act" data-emp="' + e.id + '">' +
-        '<span class="act-main">' + e.name + '  <span class="dim">' + HS.ROLES[e.role].name + '</span></span>' +
+        '<span class="act-main">' + e.name + '  <span class="dim">' + HS.ROLES[e.role].name +
+          ' · ' + HS.TIERS[e.tier].name + '</span></span>' +
         '<span class="act-detail">Tape ' + HS.statText(e,'tape') + ' · Screen ' + HS.statText(e,'screen') +
           ' · Nerve ' + HS.statText(e,'nerve') + ' · morale ' + Math.round(e.morale) +
           (e.known ? '' : ' · <span class="dim">not yet tested</span>') + '</span>' +
         '<span class="act-cost">' + HS.money(e.wage) + ' a week</span>' +
       '</button>').join('');
+    /* People you have met and not seated are still people you can call. */
+    const known = HS.metNotHired(S);
+    const waiting = known.length
+      ? '<p class="pbody dim">You also know these people. They are not on the payroll.</p>' +
+        '<div class="acts">' + known.map(c =>
+          '<button class="act" data-call="' + c.id + '">' +
+            '<span class="act-main">' + c.name + '</span>' +
+            '<span class="act-detail">' + HS.TIERS[c.tier].name + ' · ' + c.line + '</span>' +
+          '</button>').join('') + '</div>'
+      : '';
     ui.modal({
       title:'YOUR PEOPLE', sub: HS.OFFICES[S.office||0].name.toUpperCase() + ' · ' +
         team.length + ' of ' + HS.teamSeats(S) + ' seats',
-      body:'<p class="pbody dim">Tap somebody to change what they do.</p><div class="acts">' + rows + '</div>',
+      body:'<p class="pbody dim">Tap somebody to change what they do or teach them something.</p>' +
+        '<div class="acts">' + rows + '</div>' + waiting,
       actions:[{ label:'Done', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }]
     });
     document.querySelectorAll('#modalBody [data-emp]').forEach(btn => {
       btn.addEventListener('click', () => employeeSheet(btn.dataset.emp));
+    });
+    document.querySelectorAll('#modalBody [data-call]').forEach(btn => {
+      btn.addEventListener('click', () => { ui.closeModal(); G.rehire(btn.dataset.call); });
     });
   };
 
@@ -618,13 +663,19 @@ HS.Game = function(){
       actions:[
         { label:'Put them on the book', detail:HS.ROLES.trader.blurb,
           onClick:()=>{ e.role = 'trader'; ui.closeModal(); G.openRoster(); } },
-        { label:'Give them the channel', detail:'Screen ' + HS.statText(e,'screen') + ' decides how it grows',
-          disabled: !canStream,
+        { label:'Give them the channel', detail: e.special === 'oldschool'
+            ? 'He would rather resign' : 'Screen ' + HS.statText(e,'screen') + ' decides how it grows',
+          disabled: !canStream || e.special === 'oldschool',
+          why: e.special === 'oldschool' ? 'Winston thinks a webcam is a confession' : '',
           onClick:()=>{
             HS.teamOf(S).forEach(x => { if(x.role === 'streamer') x.role = 'trader'; });
             e.role = 'streamer'; S.stream.delegated = true;
             ui.closeModal(); G.openRoster();
           } },
+        { label:'Train them', detail: HS.TIERS[e.tier].blurb,
+          disabled: HS.TIERS[e.tier].train === 0,
+          why:'They did not come here to be taught',
+          onClick:()=>{ ui.closeModal(); G.trainSheet(e.id); } },
         { label:'Let them go', tone:'red', detail:'No notice, no goodwill',
           onClick:()=>{
             S.team = HS.teamOf(S).filter(x => x.id !== e.id);
@@ -636,6 +687,103 @@ HS.Game = function(){
       ]
     });
   }
+
+  /* ---- training, and the people who do not want any ---- */
+  G.trainSheet = function(id){
+    const S = G.S;
+    const e = HS.teamOf(S).find(x => x.id === id);
+    if(!e) return;
+    const tier = HS.TIERS[e.tier];
+    const price = HS.energyCost(S, HS.ENERGY.classB);
+    const rate = 3.4 * tier.train * (0.7 + S.skill / 140);
+    const stuck = e.tier === 'sharp' && e.talked < 3;
+
+    const put = stat => ({
+      label:'Put it into ' + stat.charAt(0).toUpperCase() + stat.slice(1),
+      detail: stat === 'tape' ? 'Reading the market, which is what they earn on'
+            : stat === 'screen' ? 'Carrying a room, which is what the channel runs on'
+            : 'Holding up when a week turns, which is what stops the bleeding',
+      cost: '2h · ' + price + ' energy · about +' + rate.toFixed(1),
+      disabled: S.energy < price || tier.train === 0 || stuck || e[stat] >= 99,
+      why: tier.train === 0 ? 'They did not come here to be taught'
+         : stuck ? 'They are not listening to you yet'
+         : e[stat] >= 99 ? 'There is nothing left to add' : 'Not enough energy',
+      onClick: () => { ui.closeModal(); G.train(e.id, stat, rate); }
+    });
+
+    const acts = [put('tape'), put('screen'), put('nerve')];
+    if(e.tier === 'sharp' && e.talked < 3){
+      const p2 = HS.energyCost(S, HS.ENERGY.round);
+      acts.unshift({ label:'Talk them round', detail:'Attempt ' + (e.talked + 1) + ' of 3',
+        cost:'1.5h · ' + p2 + ' energy',
+        disabled: S.energy < p2, why:'Not enough energy',
+        onClick: () => { ui.closeModal(); G.talkRound(e.id); } });
+    }
+    acts.push({ label:'Back', onClick:()=>{ ui.closeModal(); G.openRoster(); } });
+
+    ui.modal({
+      title:'TRAINING ' + e.name.toUpperCase(), sub:tier.name.toUpperCase(),
+      body: tallies([
+        ['Tape', HS.statText(e,'tape')], ['Screen', HS.statText(e,'screen')],
+        ['Nerve', HS.statText(e,'nerve')], ['Sessions put in', e.trained || 0]
+      ]) +
+      '<p class="pbody dim">' + (tier.train === 0
+        ? 'You are not going to teach this person anything. That is rather the point of them.'
+        : e.tier === 'sharp'
+          ? (e.talked >= 3
+             ? 'They have decided you are worth listening to, though it still goes in slowly.'
+             : 'They have been doing this a long time and they did not come here for a lesson. ' +
+               'Three proper conversations might change that.')
+          : 'Point them at something and they will go that way.') + '</p>',
+      actions: acts
+    });
+  };
+
+  G.train = function(id, stat, rate){
+    const S = G.S;
+    const e = HS.teamOf(S).find(x => x.id === id);
+    if(!e) return;
+    G.spendTime(2);
+    HS.addEnergy(S, -HS.energyCost(S, HS.ENERGY.classB));
+    const before = e[stat];
+    e[stat] = Math.min(99, e[stat] + rate);
+    e.trained = (e.trained || 0) + 1;
+    e.morale = HS.clamp(e.morale + 2, 0, 100);
+    e.known = true;                      /* you cannot teach somebody and not learn them */
+    HS.addSkill(S, 0.15);
+    HS.Audio.levelUp();
+    ui.toast(e.name + ': ' + stat + ' ' + Math.round(before) + ' to ' + Math.round(e[stat]) + '.', 'good');
+    ui.syncHud(); HS.save(S);
+  };
+
+  G.talkRound = function(id){
+    const S = G.S;
+    const e = HS.teamOf(S).find(x => x.id === id);
+    if(!e) return;
+    G.spendTime(1.5);
+    HS.addEnergy(S, -HS.energyCost(S, HS.ENERGY.round));
+    /* They are weighing you up. A record and a name are the argument. */
+    const odds = HS.clamp(0.22 + S.skill * 0.005 + S.rep * 0.004 + (e.morale - 60) * 0.004, 0.1, 0.92);
+    const won = Math.random() < odds;
+    if(won) e.talked = (e.talked || 0) + 1;
+    else e.morale = HS.clamp(e.morale - 4, 0, 100);
+    HS.Audio[won ? 'cash' : 'loss']();
+    const done = e.talked >= 3;
+    ui.modal({
+      title: won ? 'HE HEARS YOU OUT' : 'HE IS NOT HAVING IT', tone: won ? 'good' : 'bad',
+      body:'<p>' + (won
+        ? (done ? 'Something lands. He does not agree with you, exactly, but he stops ' +
+                  'explaining why you are wrong long enough to try it your way.'
+                : 'You get further than last time. He is still doing most of the talking.')
+        : 'You get about four minutes before he starts telling you how it was done properly, ' +
+          'and how long he did it for.') + '</p>' +
+        '<p class="pbody dim">' + (done ? e.name + ' will take training now.'
+          : 'Talked round ' + (e.talked || 0) + ' of 3. Your record and your name are the ' +
+            'argument here, and right now they are worth about ' + Math.round(odds * 100) +
+            '% a go.') + '</p>',
+      actions:[{ label:'Leave it there', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }]
+    });
+  };
 
   G.checkIn = function(){
     const S = G.S;
@@ -972,10 +1120,10 @@ HS.Game = function(){
     S.cash -= costCash; S.networkedToday = true;
     G.spendTime(2);
     HS.addEnergy(S, -HS.energyCost(S, HS.ENERGY.network));
-    const gain = (2.4 + Math.random()*2.6 + S.rank * 0.3) * HS.networkMul(S);
+    const gain = (2.4 + Math.random()*2.6 + S.rank * 0.3) * HS.networkMul(S) * HS.netMul(S);
     HS.addRep(S, gain);
-    let extra = '';
-    if(Math.random() < 0.4){ S.contacts++; extra = ' You leave with a name worth having.'; }
+    let extra = HS.teamHas(S,'connected') ? ' Nancy knew half the room already.' : '';
+    if(Math.random() < 0.4){ S.contacts++; extra += ' You leave with a name worth having.'; }
     HS.Audio.cash();
     ui.toast('Reputation +' + gain.toFixed(1) + '.' + extra, 'good');
     maybeRumour();
@@ -1109,6 +1257,9 @@ HS.Game = function(){
     const shown = (Math.random()*100 < confidence) ? truth : -truth;
     S.edge = { day:S.day, dir:truth, shown, confidence };
     if(HS.metYoon(S) && S.blue.on) S.blue.skill = Math.min(100, S.blue.skill + 0.8);
+    /* Al reads over your shoulder and feeds it back into his scanners. */
+    const al = HS.teamOf(S).find(e => e.special === 'quant');
+    if(al) al.tape = Math.min(99, al.tape + 0.6);
     HS.Audio.levelUp();
     ui.modal({
       title: shown > 0 ? 'GOLDEN CROSS' : 'DEATH CROSS',

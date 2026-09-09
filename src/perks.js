@@ -113,7 +113,7 @@ HS.feeMul      = S => HS.hasPerk(S,'r2') ? 0.67 : 1;
 /* How far down the desk lets you go before it takes the book off you. It is
    measured against where the session started, and the breach has to hold: a
    marked position that dips and comes straight back is not a blow-up. */
-HS.bustFloor   = S => HS.hasPerk(S,'r3') ? 0.15 : 0.28;
+HS.bustFloor   = S => (HS.hasPerk(S,'r3') ? 0.15 : 0.28) - (HS.bustBonus ? HS.bustBonus(S) : 0);
 HS.BUST_GRACE  = 9;        // seconds under the line before they act
 HS.BUST_WARN   = 1.7;      // multiple of the floor that gets you a word first
 

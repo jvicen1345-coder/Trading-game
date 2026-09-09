@@ -63,9 +63,13 @@ vendor/         three.js r128, vendored so the game runs offline
 - Housing is rented at the bottom of the ladder and bought at the top. The
   cheap rungs carry a per-night chance of broken sleep and a per-morning
   chance of a power cut that cancels the session outright.
-- The solo path builds a firm: recruits with Tape, Screen and Nerve, an office
-  ladder, a delegated channel, and a four quarter contest against Ladder and
-  Co. A quarter is two game weeks and a losing one resets the streak.
+- The solo path builds a firm from a fixed cast of ten in `HS.CAST`, seated
+  five at a time. Five are trainable, three need talking round three times
+  before training takes, two cannot be trained and cannot both be hired. Each
+  carries a `special` that other modules look up by name.
+- Candidate stats are never shown exactly. `HS.readCandidate` blurs them into a
+  band whose width comes from skill and reputation, and a losing week on the
+  desks sets `known` and reveals the truth.
 - The Blue House is a second trading system, gated behind its own skill. It
   raises the chart read and caps position size, and your own skill eventually
   overtakes it. Both systems share the same market code.
