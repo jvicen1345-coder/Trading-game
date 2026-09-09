@@ -30,7 +30,7 @@ HS.PERK_TREES = [
       { id:'r2', name:'Tight Fills',    x:0.22,y:0.32, needs:['r1'],
         desc:'Commission cut by a third.' },
       { id:'r3', name:'Iron Stomach',   x:0.78,y:0.32, needs:['r1'],
-        desc:'You can bleed to 25% of the book before they pull you.' },
+        desc:'You can bleed to 15% of the day before they pull you.' },
       { id:'r4', name:'Bigger Ticket',  x:0.22,y:0.60, needs:['r2'], req:{rank:3},
         desc:'Another 15% of your cash into any one position.' },
       { id:'r5', name:'Second Slot',    x:0.78,y:0.60, needs:['r3'], req:{rank:3},
@@ -110,7 +110,12 @@ HS.sizeCap = function(S, lev){
   return HS.clamp(base + HS.sizeCapBonus(S), 0.1, 1);
 };
 HS.feeMul      = S => HS.hasPerk(S,'r2') ? 0.67 : 1;
-HS.bustFloor   = S => HS.hasPerk(S,'r3') ? 0.25 : 0.40;
+/* How far down the desk lets you go before it takes the book off you. It is
+   measured against where the session started, and the breach has to hold: a
+   marked position that dips and comes straight back is not a blow-up. */
+HS.bustFloor   = S => HS.hasPerk(S,'r3') ? 0.15 : 0.28;
+HS.BUST_GRACE  = 9;        // seconds under the line before they act
+HS.BUST_WARN   = 1.7;      // multiple of the floor that gets you a word first
 
 HS.swingSlots  = S => HS.hasPerk(S,'r5') ? 2 : 1;
 HS.reviewBonus = S => HS.hasPerk(S,'t6') ? 100 : (HS.hasPerk(S,'t2') ? 10 : 0);

@@ -70,6 +70,7 @@ HS.Market.run = function(opts, done){
   M.shock = 0; M.shockLeft = 0; M.tick = 0;
   M.targetSeen = false; M.power = false;
   M.coachedBuy = false; M.coachedLate = false;
+  M.under = HS.BUST_GRACE; M.warned = false;
   M.bars = M.bars.slice(-VIEW_BARS);
   newRegime(true);
 
@@ -624,7 +625,18 @@ HS.Market.run = function(opts, done){
       const eq = equity();
       if(eq > M.peak) M.peak = eq;
       if(eq < M.trough) M.trough = eq;
-      if(eq <= cfg.startEquity * HS.bustFloor(G)){ finish('bust'); return; }
+      /* A 0DTE routinely halves and comes back, so a single tick under the
+         line is not a blow-up. They pull you when it stays there. */
+      const floor = cfg.startEquity * HS.bustFloor(G);
+      if(eq <= floor){
+        M.under -= DT;
+        if(M.under <= 0){ finish('bust'); return; }
+      } else {
+        M.under = HS.BUST_GRACE;
+        if(!M.warned && eq <= floor * HS.BUST_WARN && G.positions.length){
+          M.warned = true; warnCard(floor, eq); return;
+        }
+      }
       if(M.tick >= TICKS){ finish('bell'); return; }
       if(cfg.coach && !M.coachedLate && G.positions.length && prog() > 0.55){
         M.coachedLate = true; coachLate(); return;
@@ -708,6 +720,19 @@ HS.Market.run = function(opts, done){
       'that is no longer a firm protecting its own book. It is the only thing between you ' +
       'and picking up shifts again.',
       'It is mine to lose');
+  }
+
+  /* One warning, once a session, while there is still time to do something
+     about it. Being pulled without a word is the part that feels arbitrary. */
+  function warnCard(floor, eq){
+    HS.Audio.loss();
+    coach('THE DESK IS WATCHING',
+      'You are down <b>' + HS.money(cfg.startEquity - eq) + '</b> on the day, which is ' +
+      Math.round((1 - eq / cfg.startEquity) * 100) + '% of what you started with.' +
+      '<br><br>They take the book off you at <b>' + HS.money(floor) + '</b>. You can close ' +
+      'what you are holding with <b>space</b> and keep the rest, or you can sit in it.' +
+      '<br><br>Nobody will mention this again today.',
+      'Understood');
   }
 
   /* ---------- the power hour ----------
