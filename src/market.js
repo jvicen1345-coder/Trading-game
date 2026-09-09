@@ -170,9 +170,32 @@ HS.Market.run = function(opts, done){
   }
 
   /* ---------- trading ---------- */
+  /* The contract you are looking at, if you already hold it. */
+  function heldLong(c){
+    return G.positions.find(p => p.qty > 0 && p.sym === c.sym && p.isCall === c.isCall &&
+                                 p.kind === c.kind && p.expiryDay === c.expiryDay &&
+                                 Math.abs(p.strike - c.strike) < 1e-6);
+  }
+
   function openPos(dir){
     if(!M.selected) return;
     const c = M.selected;
+
+    /* SELL closes what you own before it opens anything. Pressing sell while
+       long used to open an opposing short against your own position, which
+       nobody means to do. */
+    if(dir < 0){
+      const own = heldLong(c);
+      if(own){ closeById(own.id, false); return; }
+      /* And a call you do not own is not yours to sell. Naked calls are the
+         one thing a real broker will not hand a retail account, and the risk
+         on them has no ceiling. */
+      if(c.isCall){
+        flash('You can only sell a call you already own.');
+        HS.Audio.loss(); return;
+      }
+    }
+
     if(c.kind === 'swing' && HS.swingCount(G) >= HS.swingSlots(G)){
       flash(HS.swingSlots(G) > 1 ? 'Both swing slots are already used.'
                                  : 'Your swing slot is already used.'); return;
@@ -565,8 +588,18 @@ HS.Market.run = function(opts, done){
       $('mkPosName').textContent = 'NO CONTRACT SELECTED';
       $('mkPosInfo').textContent = 'Pick a call or a put from the chain.';
     }
+    /* The sell button says which of the three things it is about to do. */
     $('mkBuy').disabled = !M.selected;
-    $('mkSell').disabled = !M.selected;
+    const sellBtn = $('mkSell'), lbl = sellBtn.firstChild;
+    if(!M.selected){
+      sellBtn.disabled = true; lbl.textContent = 'SELL';
+    } else if(heldLong(M.selected)){
+      sellBtn.disabled = false; lbl.textContent = 'CLOSE';
+    } else if(M.selected.isCall){
+      sellBtn.disabled = true; lbl.textContent = 'SELL';
+    } else {
+      sellBtn.disabled = false; lbl.textContent = 'SELL';
+    }
     [...document.querySelectorAll('#mkQty .mk-size')].forEach(b =>
       b.classList.toggle('sel', +b.dataset.pct === M.sizePct));
   }
@@ -647,8 +680,8 @@ HS.Market.run = function(opts, done){
       'That is a <b>0DTE</b>. It expires at tonight\'s bell and it is losing value every ' +
       'minute it sits there, whether the price moves or not. That bleed is <b>theta</b>, ' +
       'and it is the whole reason most first days end red.' +
-      '<br><br>You do not have to hold it. <b>Space</b> closes your position at the ' +
-      'current price, and the money is yours the moment you do.',
+      '<br><br>You do not have to hold it. <b>Space</b>, or the <b>SELL</b> button, closes ' +
+      'your position at the current price, and the money is yours the moment you do.',
       'Understood');
   }
   function coachLate(){

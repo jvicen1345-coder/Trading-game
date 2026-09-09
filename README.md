@@ -42,6 +42,11 @@ In a trading session: `B` buy, `S` sell, `Space` close what you are holding,
 `Tab` change expiry, `1` to `5` pick a rung of the chain (hold `Shift` for the
 put).
 
+You open a position by **buying** it, and **SELL** closes what you are holding.
+A call you do not own is not yours to sell: the risk on a naked call has no
+ceiling and no broker hands that to a retail account. Puts you may sell to
+open, against margin.
+
 Touch devices get a virtual stick and an ENTER button.
 
 ## Trading
