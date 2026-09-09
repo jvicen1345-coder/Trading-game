@@ -91,20 +91,32 @@ HS.tickerPrice = function(S, sym){
    which is the hardest way to trade and the fastest way to learn. The
    first promotion on either path buys you the week, the second buys you
    the fortnight. */
+/* The multipliers give the tape a gently upward sloping term structure, so
+   the same rung always costs more the further out you go. Time is the thing
+   you are buying and the chain should never say otherwise. A 0DTE is
+   dangerous because it decays to nothing by the bell, not because it is
+   expensive. */
 HS.EXPIRY_KINDS = {
-  '0dte':   { id:'0dte',   name:'0DTE',   unlockRank:0, ivMult:1.35,
-              blurb:'Dies at today\'s bell. All gamma, no mercy.' },
+  '0dte':   { id:'0dte',   name:'0DTE',   unlockRank:0, ivMult:0.92,
+              blurb:'Cheap, and dead by tonight\'s bell. All gamma, no mercy.' },
   'weekly': { id:'weekly', name:'WEEKLY', unlockRank:2, ivMult:1.00,
               blurb:'Runs to Friday\'s close. Room for a thesis to work.' },
-  'swing':  { id:'swing',  name:'SWING',  unlockRank:3, ivMult:0.86,
-              blurb:'A fortnight of time value. One slot only, so choose well.' }
+  'swing':  { id:'swing',  name:'SWING',  unlockRank:3, ivMult:1.06,
+              blurb:'A fortnight of time value, and priced like it. One slot only.' }
 };
 HS.SWING_DAYS = 10;                      // two trading weeks
 
 HS.expiryDayFor = function(kind, day){
   const td = HS.tradingDay(day);
-  if(kind === '0dte')   return td;
-  if(kind === 'weekly') return HS.fridayOfWeek(day);
+  if(kind === '0dte') return td;
+  if(kind === 'weekly'){
+    /* On Friday the front weekly is just a 0DTE wearing a different name,
+       and it would price under one, since it carries less implied vol for
+       the same time. The tab rolls to next week's, the way the front
+       weekly rolls once it expires. */
+    const fri = HS.fridayOfWeek(day);
+    return fri > td ? fri : fri + 5;
+  }
   return td + HS.SWING_DAYS;
 };
 

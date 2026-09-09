@@ -63,77 +63,14 @@ HS.impliedFromTape = function(tickVol, ticksPerDay){
   return tickVol * Math.sqrt(ticksPerDay * TRADING_DAYS);
 };
 
-/* Strike ladder: spaced off the expected daily move, snapped to a clean number. */
-HS.strikeStep = function(spot, dailySigma){
-  const raw = spot * Math.max(0.012, dailySigma * 0.55);
-  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
-  const norm = raw / mag;
-  const snap = norm < 1.5 ? 1 : norm < 3.5 ? 2.5 : norm < 7.5 ? 5 : 10;
-  return snap * mag;
-};
-
-/* Time to expiry in years, given how far through the session we are.
-   `prog` runs 0 -> 1 across the trading day. */
-HS.timeToExpiry = function(expiry, prog){
-  const daysLeft = expiry.days === 0
-    ? (1 - prog)                       // 0DTE bleeds out across the session
-    : expiry.days - prog;              // everything else loses one day per session
-  return Math.max(0, daysLeft) / TRADING_DAYS;
-};
-
-/* Quote width: tight for fat ATM contracts, ugly for cheap wings and 0DTE. */
-function spreadPct(mid, expiry){
-  const base = 0.022 + 0.075 / (mid + 0.6) + (expiry.id === '0dte' ? 0.035 : 0);
-  return HS.clamp(base, 0.02, 0.34);
-}
-
-/* Build the full chain for one expiry at the current spot. */
-HS.buildChain = function(opts){
-  const { spot, expiry, baseIv, dailySigma, prog, strikes } = opts;
-  const step = HS.strikeStep(spot, dailySigma);
-  const atm = Math.round(spot / step) * step;
-  const T = HS.timeToExpiry(expiry, prog);
-  const half = Math.floor(strikes / 2);
-  const rows = [];
-
-  for(let i = -half; i <= half; i++){
-    const K = +(atm + i * step).toFixed(4);
-    if(K <= 0) continue;
-    const iv = HS.ivFor(baseIv * expiry.ivMult, spot, K, T);
-    const call = HS.blackScholes(true,  spot, K, T, iv);
-    const put  = HS.blackScholes(false, spot, K, T, iv);
-    rows.push({
-      strike: K, iv, T,
-      call: quote(call, expiry),
-      put:  quote(put,  expiry)
-    });
-  }
-  return { expiry, strikes: rows, atm, step, T };
-};
-
-function quote(g, expiry){
-  const mid = g.price;
-  const sp = spreadPct(mid, expiry);
-  const halfW = Math.max(0.01, mid * sp / 2);
-  return {
-    mid,
-    bid: Math.max(0, mid - halfW),
-    ask: mid + halfW,
-    delta: g.delta, gamma: g.gamma, theta: g.theta, vega: g.vega
-  };
-}
-
-/* Re-quote one held contract as spot and time move. */
-HS.quoteContract = function(c, spot, baseIv, prog){
-  const T = HS.timeToExpiry(c.expiry, prog);
-  const iv = HS.ivFor(baseIv * c.expiry.ivMult, spot, c.strike, T);
-  const g = HS.blackScholes(c.isCall, spot, c.strike, T, iv);
-  return Object.assign(quote(g, c.expiry), { iv, T });
-};
-
-HS.contractName = function(c){
-  return c.symbol + ' ' + c.expiry.label + ' ' +
-         (Math.round(c.strike*100)/100) + ' ' + (c.isCall ? 'C' : 'P');
+/* Rung spacing: a fixed share of the move the contract can still make before
+   it dies, so every expiry's five rungs sit at the same distance measured in
+   sigma. Deliberately not snapped to round numbers. Snapping put each expiry
+   at a different distance in sigma, and that broke the rule the chain is
+   supposed to teach: more time costs more money. It made a far OTM swing
+   cheaper than a far OTM weekly. */
+HS.rungWidth = function(spot, dailySigma){
+  return spot * Math.max(0.012, dailySigma * 0.55);
 };
 
 })(window.HS);

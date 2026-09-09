@@ -304,10 +304,18 @@ HS.Market.run = function(opts, done){
     const expiryDay = HS.expiryDayFor(kind, G.day);
     const days = Math.max(0.12, (expiryDay - HS.tradingDay(G.day)) + (1 - prog()));
     const em = dailySigma * Math.sqrt(days);
-    const step = Math.max(base.tick * 5, HS.strikeStep(M.price, em * 0.7));
-    const atm = Math.round(M.price / step) * step;
+    const step = Math.max(base.tick * 5, HS.rungWidth(M.price, em * 0.7));
+    /* Anchor the ladder near the spot, not on the rung grid. Snapping the
+       anchor to a step that is coarse for a long expiry threw the ATM rung
+       up to half a step off the money, in a different direction for each
+       expiry, which is how a weekly put ended up dearer than a swing put.
+       A tenth of a step is round enough to read and close enough to spot
+       that time is the only thing separating the three columns. */
+    const grid = Math.max(base.tick, step / 10);
+    const atm = Math.round(M.price / grid) * grid;
     const n = MONEY.indexOf(m) - 2;                  // -2 .. +2
-    const strike = Math.max(step, +(atm + (isCall ? n : -n) * step).toFixed(4));
+    const dp = M.price < 20 ? 2 : 1;                 // as the chain prints it
+    const strike = Math.max(step, +(atm + (isCall ? n : -n) * step).toFixed(dp));
     return { sym, isCall, strike, kind, moneyness:m.label, expiryDay };
   }
 
