@@ -1133,7 +1133,7 @@ HS.Game = function(){
     S.ended = S.path;
     HS.Audio.win();
     const text = ({
-      solo:'No floor, no firm, no colleagues. Twenty years of reading the same tape better than anyone else alive, from a room you eventually stopped needing to leave. They put your track record in the training manuals of firms that would never have hired you.',
+      solo:'The forty-first floor, your name in the lobby directory, and a room full of people who would not have got an interview across the street. Ladder and Co. spent four straight quarters explaining you to their investors, and somebody in that building is still being asked, in meetings, why they let the intern walk out. You started in a basement with four hundred dollars and a suit that did not fit. The suit still does not fit. You have simply stopped changing it.',
       desk:'Four hundred phones and every one of them makes you money. You have not entered an order yourself in eleven years. Your name is above the door in letters you can read from the river.',
       fund:'Two hundred million dollars and an entire city that would like to see you in prison. Kade left you the whole thing and disappeared somewhere warm. The fund is up again this year. At the restaurant nobody looks at you, which is how you know that everybody is.'
     })[S.path];

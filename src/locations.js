@@ -85,6 +85,8 @@ HS.Locations = function(game){
            : (s.weekEdge && s.weekEdge.week === HS.weekOf(s.day) ? s.weekEdge : null),
       news: [22, 40], shock: 0.016 + s.rank * 0.003,
       blue: HS.usingBlue(s),
+      /* The intern week is guided; it does not need a decision every morning. */
+      powerHour: !!s.path,
       title: o.title, sub: o.sub
     }, res => {
       game.setPaused(false);
@@ -462,7 +464,9 @@ HS.Locations = function(game){
       cost:'2h · ' + price + ' energy',
       disabled: s.energy < price || full || s.rank < 3,
       why: s.rank < 3 ? 'Nobody works for a man with no track record'
-         : full ? 'No seats left at ' + HS.OFFICES[s.office||0].name : 'Not enough energy',
+         : full ? (s.office ? 'Every desk at ' + HS.OFFICES[s.office].name + ' is taken'
+                            : 'You have nowhere to put anybody else')
+         : 'Not enough energy',
       onClick: () => { ui().closePanel(); game.recruit(source); }
     };
   }

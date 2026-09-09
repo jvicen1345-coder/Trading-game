@@ -590,7 +590,8 @@ HS.Market.run = function(opts, done){
       if(eq < M.trough) M.trough = eq;
       if(eq <= cfg.startEquity * HS.bustFloor(G)){ finish('bust'); return; }
       if(M.tick >= TICKS){ finish('bell'); return; }
-      if(!M.targetSeen && eq >= cfg.startEquity * (1 + cfg.target) && prog() < POWER_PROG){
+      if(cfg.powerHour && !M.targetSeen &&
+         eq >= cfg.startEquity * (1 + cfg.target) && prog() < POWER_PROG){
         M.targetSeen = true;
         offerPowerHour(eq);
         return;
@@ -661,8 +662,15 @@ HS.Market.run = function(opts, done){
     if(reason === 'bust'){
       G.positions.slice().forEach(p => closeById(p.id, true));
     } else {
-      /* Banking early still runs to the bell for anything expiring today:
-         you walked away, the contract did not. */
+      /* Banking the day has to actually bank it. Anything that dies tonight
+         comes off at the mark, because a player who was told they hit their
+         number and then watched it settle away has been lied to. Longer
+         dated contracts still ride: carrying those is the point of them. */
+      if(reason === 'target'){
+        const td = HS.tradingDay(G.day);
+        G.positions.slice().filter(p => p.expiryDay <= td)
+          .forEach(p => closeById(p.id, true));
+      }
       settled = settleAtBell();
     }
     M.finished = true; M.running = false;
@@ -674,7 +682,9 @@ HS.Market.run = function(opts, done){
       pnl: eq - cfg.startEquity,
       finalEquity: eq,
       returnPct: (eq - cfg.startEquity) / Math.max(1, cfg.startEquity),
-      hitTarget: eq >= cfg.startEquity * (1 + cfg.target),
+      /* Reaching the number counts even if you banked it and the closing
+         spread put you a hair back under. You made the day. */
+      hitTarget: M.targetSeen || eq >= cfg.startEquity * (1 + cfg.target),
       busted: reason === 'bust',
       trades: M.trades, wins: M.wins, settled,
       closePrice: M.price, symbol: sym
