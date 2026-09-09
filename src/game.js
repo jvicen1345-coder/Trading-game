@@ -99,7 +99,7 @@ HS.Game = function(){
   function intro(){
     ui.modal({
       title:'MONDAY, 8:00',
-      body:'<p>You are twenty-four years old and you live in your parents\' basement.</p>' +
+      body:'<p>The basement smells of damp and your father is already awake upstairs.</p>' +
            '<p>You have <b>' + HS.money(G.S.cash) + '</b>, a suit that does not fit, and one week of ' +
            'unpaid-adjacent work experience lined up at a brokerage called Ladder &amp; Co.</p>' +
            '<p class="dim">Five days to prove you belong on a screen. What happens after that is up to you.</p>',

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Market Maker</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230B0E15'/%3E%3Crect x='6' y='18' width='4' height='7' rx='1.2' fill='%23FF5B67'/%3E%3Crect x='14' y='12.5' width='4' height='9' rx='1.2' fill='%233FD68C'/%3E%3Crect x='22' y='6' width='4' height='10' rx='1.2' fill='%23E8B85C'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Typography only. If this fails (offline, file://) the system stacks below take over. -->
@@ -40,9 +41,8 @@ button{font-family:inherit;color:inherit;border:none;background:none;cursor:poin
   padding:8px 12px;background:linear-gradient(180deg,rgba(7,9,13,.92),rgba(7,9,13,0));
 }
 .brand{display:flex;align-items:center;gap:8px;}
-.mark{width:22px;height:22px;border-radius:6px;flex:0 0 auto;
-  background:conic-gradient(from 210deg,var(--gold),var(--violet),var(--cyan),var(--gold));
-  box-shadow:0 0 12px rgba(232,184,92,.35);}
+.mark{width:24px;height:24px;flex:0 0 auto;display:block;
+  filter:drop-shadow(0 0 7px rgba(232,184,92,.32));}
 .brand b{font-size:12px;letter-spacing:1.4px;font-weight:700;}
 .chip{
   display:flex;flex-direction:column;gap:1px;padding:4px 10px;border-radius:8px;
@@ -245,9 +245,8 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
 #title{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
   padding:22px;background:radial-gradient(900px 520px at 50% 30%,rgba(139,107,255,.12),transparent 62%),#06080C;}
 #title .card{text-align:center;}
-.hero{width:64px;height:64px;border-radius:17px;margin:0 auto 16px;
-  background:conic-gradient(from 210deg,var(--gold),var(--violet),var(--cyan),var(--gold));
-  box-shadow:0 0 40px rgba(232,184,92,.36);}
+.hero{width:76px;height:76px;margin:0 auto 16px;display:block;
+  filter:drop-shadow(0 0 22px rgba(232,184,92,.34));}
 #title h1{margin:0;font-size:30px;letter-spacing:4px;font-weight:700;}
 #title .tag{margin:4px 0 16px;font-size:10px;letter-spacing:3.4px;color:var(--gold);font-weight:600;}
 #title p{font-size:13px;line-height:1.7;color:var(--dim);margin:0 0 6px;}
@@ -462,11 +461,33 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
 </head>
 <body>
 
+<!-- logo: three candles stepping up out of a dark tile -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="mmLogo" viewBox="0 0 32 32">
+    <defs>
+      <linearGradient id="mmTile" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#1B2130"/><stop offset="1" stop-color="#0B0E15"/>
+      </linearGradient>
+    </defs>
+    <rect width="32" height="32" rx="8" fill="url(#mmTile)"/>
+    <rect x="0.6" y="0.6" width="30.8" height="30.8" rx="7.6"
+          fill="none" stroke="#E8B85C" stroke-opacity=".38" stroke-width="1.2"/>
+    <g stroke-linecap="round">
+      <line x1="8"  y1="15" x2="8"  y2="27" stroke="#FF5B67" stroke-width="1.4"/>
+      <rect x="6"  y="18" width="4" height="7" rx="1.2" fill="#FF5B67"/>
+      <line x1="16" y1="10" x2="16" y2="24" stroke="#3FD68C" stroke-width="1.4"/>
+      <rect x="14" y="12.5" width="4" height="9" rx="1.2" fill="#3FD68C"/>
+      <line x1="24" y1="4"  x2="24" y2="19" stroke="#E8B85C" stroke-width="1.4"/>
+      <rect x="22" y="6" width="4" height="10" rx="1.2" fill="#E8B85C"/>
+    </g>
+  </symbol>
+</defs></svg>
+
 <canvas id="scene"></canvas>
 
 <div id="hud">
   <div class="topbar">
-    <div class="brand"><div class="mark"></div><b>MARKET MAKER</b></div>
+    <div class="brand"><svg class="mark" viewBox="0 0 32 32"><use href="#mmLogo"/></svg><b>MARKET MAKER</b></div>
     <div class="chip"><span class="k">CASH</span><span class="v" id="hudCash">$240</span></div>
     <div class="chip" id="hudLoan" style="display:none"><span class="k">LOAN</span><span class="v" id="hudLoanVal" style="color:var(--red)">$0</span></div>
     <div class="chip wide"><span class="k">RANK</span><span class="v" id="hudRank">Basement Nobody</span></div>
@@ -565,10 +586,9 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
 <!-- title -->
 <div id="title">
   <div class="card">
-    <div class="hero"></div>
+    <svg class="hero" viewBox="0 0 32 32"><use href="#mmLogo"/></svg>
     <h1>MARKET MAKER</h1>
     <div class="tag">MAKE THE MARKET · MAKE YOURSELF</div>
-    <p>You are twenty-four and you live in your parents' basement.</p>
     <p>Walk the city. Take the job. Learn the tape. Climb until you are the best broker
        alive — or own the floor everyone else works on — or run the fund the whole city hates.</p>
     <button class="btn" id="btnNew">NEW LIFE</button>
