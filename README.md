@@ -45,7 +45,17 @@ put).
 Every position is opened by **buying** it, and **SELL** closes what you are
 holding. Nothing you do not own is yours to sell.
 
-Touch devices get a virtual stick and an ENTER button.
+### On a phone
+
+Touch devices get a virtual stick and an ENTER button, and the game is played
+**in landscape**. A top-down city in a tall thin window shows you almost
+nothing, so a phone held upright is asked to turn rather than fobbed off with a
+squeezed layout. The clock stops while that gate is up, so nobody loses a
+trading day to picking the phone up the wrong way round.
+
+Starting the game asks for fullscreen and for an orientation lock, since that
+is the one moment a browser will grant either. Both are offers: iOS Safari
+refuses them and the game plays fine without.
 
 ### A controller
 

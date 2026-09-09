@@ -46,8 +46,10 @@ HS.Game = function(){
     if('ontouchstart' in window){
       document.body.classList.add('touch');
       input.bindStick($('stick'), $('stickKnob'));
+      orient();
+      window.addEventListener('orientationchange', orient);
     }
-    window.addEventListener('resize', () => { world.resize(); ui.resizeMinimap(); });
+    window.addEventListener('resize', () => { world.resize(); ui.resizeMinimap(); orient(); });
     ui.resizeMinimap();
     wireButtons();
     refreshLandmarks();
@@ -178,7 +180,30 @@ HS.Game = function(){
 
   function overlayOpen(){
     return $('room').classList.contains('show') || $('perks').classList.contains('show') ||
-           $('bigmap').classList.contains('show') || $('help').classList.contains('show');
+           $('bigmap').classList.contains('show') || $('help').classList.contains('show') ||
+           portrait();
+  }
+
+  /* ---------------- landscape ----------------
+     A phone held upright sees a sliver of the city, so it gets told to turn
+     rather than a layout squeezed into a shape the game was never drawn for.
+     The gate counts as an overlay, which means the clock stops while it is up:
+     nobody loses a trading day to having picked the phone up the wrong way. */
+  function portrait(){ return document.body.classList.contains('portrait'); }
+
+  function orient(){
+    /* Touch only. A desktop window dragged tall and thin is a choice somebody
+       made, and freezing their game over it with no overlay to explain would
+       just look broken. */
+    if(!document.body.classList.contains('touch')) return;
+    const tall = window.innerHeight > window.innerWidth;
+    document.body.classList.toggle('portrait', tall);
+    if(!tall) return;
+    /* Ask for the lock when we can get it. Every browser refuses outside
+       fullscreen and several refuse regardless, so this is an offer, not a
+       plan: the overlay above is what actually holds the line. */
+    const so = window.screen && screen.orientation;
+    if(so && so.lock) so.lock('landscape').catch(() => {});
   }
 
   function updateProximity(){

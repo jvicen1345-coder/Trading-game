@@ -53,6 +53,11 @@ vendor/         three.js r128, vendored so the game runs offline
   connection, no API key and no market data anywhere in this repo, and none
   should ever be added.
 - All textures and audio are generated at load. There are no asset files.
+- Phones play in landscape. `body.portrait` gates a rotate overlay and counts as
+  an open overlay in `game.js`, which stops the clock behind it. It is set only
+  on touch devices, so a narrow desktop window is left alone. The landscape HUD
+  is driven by a `max-height` media query rather than a width one: a phone on
+  its side is wider than the 820px breakpoint but only ~390px tall.
 - Balance is checked with a headless harness that plays full runs against the
   real pricing, calendar and rank code. Re-run it after any balance change.
 - Saves live in `localStorage` under `marketmaker_save_v3`. Changing the shape
