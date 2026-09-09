@@ -1,4 +1,4 @@
-/* MARKET MAKER — perk constellations. Three trees, prerequisite-linked,
+/* MARKET MAKER - perk constellations. Three trees, prerequisite-linked,
    bought with points earned from skill and rank. */
 window.HS = window.HS || {};
 (function(HS){

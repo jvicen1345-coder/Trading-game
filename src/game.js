@@ -1,4 +1,4 @@
-/* MARKET MAKER — main controller: loop, interaction, consequences, endings. */
+/* MARKET MAKER - main controller: loop, interaction, consequences, endings. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';
@@ -9,7 +9,7 @@ const TUTORIAL = [
   { key:'goto_work',  target:'brokerage', text:'Walk to Ladder & Co. and ask for the internship.' },
   { key:'session1',   target:'brokerage', text:'Trade your first session. Buy one cheap call and see what happens.' },
   { key:'sleep1',     target:'home',      text:'Go home and sleep. Turn in before 21:30 to wake refreshed.' },
-  { key:'review',     target:'brokerage', text:'Day two. Do a chart review before the open — it tells you which way the tape leans.' },
+  { key:'review',     target:'brokerage', text:'Day two. Do a chart review before the open - it tells you which way the tape leans.' },
   { key:'session2',   target:'brokerage', text:'Trade the session with your read.' },
   { key:'study',      target:'school',    text:'Take an evening seminar. Skill is what lets you see the tape.' },
   { key:'sleep2',     target:'home',      text:'Sleep. Early, if you can.' },
@@ -162,7 +162,7 @@ HS.Game = function(){
         perfChecked = true;
         if(perfTime / perfFrames > 0.030){
           world.setLowQuality();
-          ui.toast('Shadows off — keeping the frame rate up.', '');
+          ui.toast('Shadows off - keeping the frame rate up.', '');
         }
       }
     }
@@ -414,7 +414,7 @@ HS.Game = function(){
       title: p.name.toUpperCase(),
       tone:'good',
       body:'<p>' + (id === 'solo'
-        ? 'You take the door. On Monday there is no commute, no supervisor and no floor to hide on — only the desk in your room and whatever you can make of it.'
+        ? 'You take the door. On Monday there is no commute, no supervisor and no floor to hide on - only the desk in your room and whatever you can make of it.'
         : 'You take the seat. A junior book, a wage, and a ladder with a great many rungs above you.') + '</p>' +
         '<p class="dim">' + (id === 'solo'
           ? 'Trade from home. Nobody will tell you when to start.'
@@ -497,7 +497,7 @@ HS.Game = function(){
       title:'NICE START TO THE WEEK',
       tone:'good',
       body:'<p>Three days in and you have traded a session, read a chart, sat a class and shaken some hands. That is the whole loop.</p>' +
-        '<p><b>Now take control.</b> Two days left in the week. Spend them however you like — but end the week <b>green</b>.</p>' +
+        '<p><b>Now take control.</b> Two days left in the week. Spend them however you like - but end the week <b>green</b>.</p>' +
         '<p class="dim">Your week P&amp;L is on the objective panel. Friday evening somebody decides what you are.</p>',
       actions:[{ label:'Understood', onClick:()=>{ ui.closeModal(); HS.save(S); } }]
     });
@@ -675,7 +675,7 @@ HS.Game = function(){
         ' the two-hundred. On this read the tape opens ' +
         (shown > 0 ? '<b class="up">bid</b>' : '<b class="down">offered</b>') + '.</p>' +
         '<p class="dim">Your read is <b>' + confidence + '%</b> reliable' +
-        (rested > 0 ? ' — being refreshed helped' : rested < 0 ? ' — you are too tired to see straight' : '') + '.</p>',
+        (rested > 0 ? ' - being refreshed helped' : rested < 0 ? ' - you are too tired to see straight' : '') + '.</p>',
       actions:[{ label:'Noted', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); tutorMaybe(['review']); } }]
     });
   };
@@ -720,7 +720,7 @@ HS.Game = function(){
     const last = HS.PATHS[S.path] && !HS.nextRank(S);
     if(last){ finale(); return; }
     ui.modal({
-      title:'PROMOTED — ' + r.name.toUpperCase(), tone:'good',
+      title:'PROMOTED - ' + r.name.toUpperCase(), tone:'good',
       body:'<p>' + (text || 'You move up.') + '</p>' +
            (r.salary ? '<p class="dim">Day rate is now <b>' + HS.money(r.salary) + '</b>.</p>' : ''),
       actions:[{ label:'Good', onClick:()=>{ ui.closeModal(); ui.syncHud(); } }]
@@ -795,7 +795,7 @@ HS.Game = function(){
     if(!S.path){
       html += '<p class="dim">You are an intern. On Friday of week one somebody decides what you are.</p>';
     } else if(nr){
-      html += '<div class="career-next"><span class="k">NEXT — ' + nr.name + '</span>' +
+      html += '<div class="career-next"><span class="k">NEXT - ' + nr.name + '</span>' +
         HS.needText(S, nr.need).map(n => '<div class="req ' + (n.ok?'ok':'') + '"><span>' +
           n.label + '</span><b>' + n.text + '</b></div>').join('') + '</div>';
     } else html += '<p class="dim">There is nothing above this.</p>';
@@ -896,7 +896,7 @@ HS.Game = function(){
         const have = HS.hasPerk(S,p.id), avail = HS.canBuyPerk(S,p);
         const node = HS.el('button','perk-node' + (have?' have':avail?' avail':''), have?'✓':'●');
         node.style.left = x+'px'; node.style.top = y+'px';
-        node.title = p.name + ' — ' + p.desc;
+        node.title = p.name + ' - ' + p.desc;
         const tag = HS.el('span','perk-label', p.name);
         tag.style.left = x+'px'; tag.style.top = (y+20)+'px';
         canvas.appendChild(tag);
@@ -908,13 +908,13 @@ HS.Game = function(){
             ui.syncHud(); HS.save(S); renderPerks();
           } else {
             HS.Audio.click();
-            $('perkHint').innerHTML = '<b>' + p.name + '</b> — ' + p.desc +
+            $('perkHint').innerHTML = '<b>' + p.name + '</b> - ' + p.desc +
               (have ? '' : '<br><span class="dim">' + (reqs || 'no requirements') +
               (S.perkPoints < 1 ? '  ✗ needs a point' : '') + '</span>');
           }
         });
         node.addEventListener('mouseenter', () => {
-          $('perkHint').innerHTML = '<b>' + p.name + '</b> — ' + p.desc;
+          $('perkHint').innerHTML = '<b>' + p.name + '</b> - ' + p.desc;
         });
         canvas.appendChild(node);
       });
@@ -969,7 +969,7 @@ HS.Game = function(){
       ctx.textAlign = 'center'; ctx.textBaseline = 'top';
       ctx.fillText(lm.name, x, y + 11);
       legend.appendChild(HS.el('div', isT ? 'obj' : '',
-        '<i style="background:' + col + '"></i>' + lm.name + (isT ? ' — go here' : '')));
+        '<i style="background:' + col + '"></i>' + lm.name + (isT ? ' - go here' : '')));
     });
     const [px,py] = toMap(player.x, player.z);
     const dx = Math.sin(player.angle), dy = Math.cos(player.angle);

@@ -1,4 +1,4 @@
-/* MARKET MAKER — procedural city: layout, geometry, traffic. */
+/* MARKET MAKER - procedural city: layout, geometry, traffic. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';
@@ -157,7 +157,7 @@ HS.buildCity = function(seed){
 };
 
 /* ------------------------------------------------------------------
-   Textures — generated, so the game ships with no image assets.
+   Textures - generated, so the game ships with no image assets.
    ------------------------------------------------------------------ */
 function makeWindowTextures(THREE){
   const S = 128, cols = 4, rows = 4;
@@ -418,7 +418,7 @@ HS.buildCityMeshes = function(THREE, city){
       });
       add(rail); add(mouth); add(glob);
     }
-    // steam vents — the plume animates
+    // steam vents - the plume animates
     const steams = by('steam');
     if(steams.length){
       const cone = mk(new THREE.CylinderGeometry(0.9,0.55,1.1,8), 0xC96A2A, steams.length);
@@ -451,7 +451,7 @@ HS.buildCityMeshes = function(THREE, city){
       be.forEach((p,i)=>{ put(seat,i,p,0.85); put(back,i,{x:p.x,z:p.z-0.35,rot:p.rot},1.3); });
       add(seat); add(back);
     }
-    // sidewalk scaffolding — permanently, as in life
+    // sidewalk scaffolding - permanently, as in life
     const sc = by('scaffold');
     if(sc.length){
       const deck = mk(new THREE.BoxGeometry(7.0,0.3,3.0), 0x8A7A5A, sc.length);

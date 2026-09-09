@@ -5,19 +5,19 @@ A top-down 3D life sim about a stock broker's career, played in the browser.
 A market maker is the honest party who provides liquidity and takes the spread.
 It is also the person who makes the market do what he wants. And it is what you
 become, from nothing, over the course of the game. All three readings are on the
-table — which one you end up being is the whole point.
+table - which one you end up being is the whole point.
 
 You start at twenty-four, in your parents' basement, with $240. You walk a city,
-take a job on a brokerage floor, learn to read a tape, and climb — until the
+take a job on a brokerage floor, learn to read a tape, and climb - until the
 ladder runs out and you choose what you actually become:
 
-- **The Legend** — stay on the desk and out-trade everyone alive.
-- **The House** — open your own floor and take a cut of every ticket on it.
-- **The Villain** — raise a fund, lever it to the ceiling, and let the city hate you.
+- **The Legend** - stay on the desk and out-trade everyone alive.
+- **The House** - open your own floor and take a cut of every ticket on it.
+- **The Villain** - raise a fund, lever it to the ceiling, and let the city hate you.
 
 ## Playing it
 
-Open `index.html` in any modern browser. No build step, no server, no network —
+Open `index.html` in any modern browser. No build step, no server, no network -
 everything including three.js is vendored in this folder.
 
 | Key | Action |
@@ -35,7 +35,7 @@ Touch devices get a virtual stick and an ENTER button.
 
 ## How it works
 
-Time passes while you walk — a full day is about six minutes. Energy drains as you
+Time passes while you walk - a full day is about six minutes. Energy drains as you
 move and every action costs hours. Rent comes due every seven days. Sleep at home
 to start the next day. Stay out past 3am or hit zero energy and the night takes
 something off you.
@@ -45,12 +45,12 @@ at low skill the chart is noise, at high skill the hidden trend leaks through.
 *Reputation* opens promotions and lets you raise money. *Heat* is how interested
 the SEC is in you. *Energy* is the limit on how much you can do in a day.
 
-**Two kinds of trading.** At the brokerage you trade the firm's book — you keep a
+**Two kinds of trading.** At the brokerage you trade the firm's book - you keep a
 commission on the upside and losses cost you standing, not savings. At the Exchange
 you put up your own cash and keep all of it, both ways.
 
-The nine city locations — home, brokerage, exchange, bank, bar, night school,
-realtor, SEC field office, and eventually your own building — each do something
+The nine city locations - home, brokerage, exchange, bank, bar, night school,
+realtor, SEC field office, and eventually your own building - each do something
 distinct. Progress saves to `localStorage` automatically.
 
 ## Layout
@@ -59,7 +59,7 @@ distinct. Progress saves to `localStorage` automatically.
 index.html          shell, styles, boot
 vendor/three.min.js three.js r128 (MIT), vendored so the game runs offline
 src/util.js         math, seeded RNG, formatting
-src/audio.js        procedural sound — oscillators, no audio files
+src/audio.js        procedural sound - oscillators, no audio files
 src/state.js        stats, clock, economy, career ladder, save/load
 src/city.js         procedural city: layout, merged geometry, traffic
 src/world.js        renderer, follow camera, day/night lighting
@@ -72,11 +72,18 @@ src/game.js         main loop, consequences, endings
 ```
 
 The city is generated from a fixed seed, so the map is the same every run.
-All textures are drawn to canvas at load — there are no image assets.
+All textures are drawn to canvas at load - there are no image assets.
+
+## House style
+
+No em dashes; use a hyphen. `node tools/no-em-dash.mjs` reports them and
+`--fix` rewrites them. Git hooks in `tools/hooks` enforce it for both staged
+files and commit messages; enable them with
+`git config core.hooksPath tools/hooks`.
 
 ## Scope
 
 This repository is the game and nothing else. There is no live trading, no
 broker connection, no API keys and no market data. Every price you see is
-generated locally by `src/tape.js` and priced by `src/options.js` — it is a
+generated locally by `src/tape.js` and priced by `src/options.js` - it is a
 simulation for play, not a tool for trading real money.

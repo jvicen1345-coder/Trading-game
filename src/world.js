@@ -1,4 +1,4 @@
-/* MARKET MAKER — renderer, camera, lighting, day/night. */
+/* MARKET MAKER - renderer, camera, lighting, day/night. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';
@@ -52,7 +52,7 @@ HS.World = function(THREE, canvas, city){
   scene.fog = new THREE.Fog(0x0A0E18, 150, 560);
 
   const camera = new THREE.PerspectiveCamera(46, 1, 0.5, 2600);
-  /* Overhead, angled back — the "3D from above" read. */
+  /* Overhead, angled back - the "3D from above" read. */
   const CAM_OFF = new THREE.Vector3(0, 96, 42);
   const camTarget = new THREE.Vector3();
   const camPos = new THREE.Vector3();

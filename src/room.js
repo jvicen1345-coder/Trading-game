@@ -1,4 +1,4 @@
-/* MARKET MAKER — your room. Buy and fit things; each one does something small
+/* MARKET MAKER - your room. Buy and fit things; each one does something small
    now and leaves a hook for more later. */
 window.HS = window.HS || {};
 (function(HS){

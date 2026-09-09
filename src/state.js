@@ -1,4 +1,4 @@
-/* MARKET MAKER — game state: stats, clock, economy, career, save/load. */
+/* MARKET MAKER - game state: stats, clock, economy, career, save/load. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';
@@ -199,7 +199,7 @@ HS.rollDay = function(S, ev){
     ev.push({ kind: r.pnl >= 0 ? 'good' : 'bad',
       text: HS.posName(r.pos, S.day) + ' expired ' +
             (r.value > 0 ? 'worth ' + r.value.toFixed(2) : 'worthless') +
-            ' — ' + HS.signed(r.pnl) });
+            ' - ' + HS.signed(r.pnl) });
   });
 
   if(HS.isMonday(S.day)){
@@ -212,13 +212,13 @@ HS.rollDay = function(S, ev){
     const rent = HS.HOUSING[S.housing].rent;
     if(rent > 0){
       S.cash -= rent;
-      ev.push({ kind:'bill', text:'Rent due — ' + HS.money(rent) + ' out.' });
+      ev.push({ kind:'bill', text:'Rent due - ' + HS.money(rent) + ' out.' });
     }
     if(S.loan > 0){
       const rate = S.loanRate * (HS.hasPerk(S,'s3') ? 0.5 : 1);
       const interest = Math.round(S.loan * rate);
       S.loan += interest;
-      ev.push({ kind:'bill', text:'Loan interest — ' + HS.money(interest) + ' added.' });
+      ev.push({ kind:'bill', text:'Loan interest - ' + HS.money(interest) + ' added.' });
     }
   }
 

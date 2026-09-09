@@ -1,0 +1,6 @@
+#!/bin/sh
+# Commit messages follow the same rule as the code.
+if grep -q "$(printf '\342\200\224')" "$1"; then
+  echo "Commit message contains an em dash. Project style is a hyphen."
+  exit 1
+fi

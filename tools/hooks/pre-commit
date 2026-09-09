@@ -1,0 +1,10 @@
+#!/bin/sh
+# Block staged content containing em dashes. Project style is a hyphen.
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+root=$(git rev-parse --show-toplevel)
+# shellcheck disable=SC2086
+node "$root/tools/no-em-dash.mjs" $staged || {
+  echo "Commit blocked. Fix with: node tools/no-em-dash.mjs --fix"
+  exit 1
+}

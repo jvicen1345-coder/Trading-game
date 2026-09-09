@@ -1,4 +1,4 @@
-/* MARKET MAKER — HUD, panels, toasts, minimap. */
+/* MARKET MAKER - HUD, panels, toasts, minimap. */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';

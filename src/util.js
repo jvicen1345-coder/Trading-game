@@ -1,4 +1,4 @@
-/* MARKET MAKER — shared helpers. Classic script, no modules (must run from file://). */
+/* MARKET MAKER - shared helpers. Classic script, no modules (must run from file://). */
 window.HS = window.HS || {};
 (function(HS){
 'use strict';

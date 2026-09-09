@@ -1,4 +1,4 @@
-/* MARKET MAKER — the trading session.
+/* MARKET MAKER - the trading session.
    You always trade your own account. Contracts are picked by moneyness rather
    than by strike arithmetic, and they survive the closing bell unless their
    expiry says otherwise. */
@@ -31,7 +31,7 @@ const HEADLINES = {
 HS.Market = {};
 
 HS.Market.run = function(opts, done){
-  const G = opts.state;                       // live game state — mutated directly
+  const G = opts.state;                       // live game state - mutated directly
   const cfg = Object.assign({
     duration:110, target:0.08, vol:0.0011, trendStr:0.9, chop:0.34,
     regimeT:[9,18], leverage:1, feePerContract:0.65,
@@ -62,7 +62,7 @@ HS.Market.run = function(opts, done){
   newRegime(true);
   for(let i = 0; i < VIEW_BARS * TICKS_PER_BAR; i++) step(true);
   // Rescale the warm-up so yesterday's shape runs continuously into today's
-  // real opening price — no artificial gap on the last candle.
+  // real opening price - no artificial gap on the last candle.
   const real = HS.tickerPrice(G, sym);
   const k = real / M.price;
   M.bars.forEach(b => { b.o*=k; b.h*=k; b.l*=k; b.c*=k; });
@@ -145,7 +145,7 @@ HS.Market.run = function(opts, done){
   const feeEach = () => cfg.feePerContract * HS.feeMul(G) * (1 - Math.min(0.4, G.rep / 250));
   function buyingPower(){ return equity() * cfg.leverage * HS.sizeMul(G); }
 
-  /* Long premium is paid in cash — leverage cannot buy it. Leverage is margin,
+  /* Long premium is paid in cash - leverage cannot buy it. Leverage is margin,
      so it only widens what you may write. */
   function maxQty(contract, isWrite){
     const q = quoteOf(contract);
