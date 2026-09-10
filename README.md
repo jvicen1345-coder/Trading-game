@@ -178,6 +178,20 @@ discipline, so the channel quietly pays you to take the trade you should not.
 
 ## Building a firm
 
+Three things an employee is good at, and nerve is not one of the other two.
+Tape is what they are worth in an average week. Screen is whether they can
+carry a room. **Nerve is how wide the week is allowed to get**: somebody with
+none of it makes you a fortune in March and gives it back in April, somebody
+with plenty turns in more or less the same week every week. Nobody is paid for
+nerve directly. What it buys is that your money compounds, which a book that
+swings hard both ways never quite does.
+
+The week is the same week for everyone on the floor, so a bad Friday arrives
+for the whole room at once and nerve decides who holds on to their book. The
+roster shows it as a word rather than a bar - steady, even, streaky, wild - and
+so does the screen where you are deciding what to pay somebody, because a risk
+you cannot price before you buy it is not a decision.
+
 The solo route is not really about trading alone. It is about proving the
 floor was wrong to be a floor, which means building one of your own out of
 people nobody else would hire.

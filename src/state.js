@@ -267,6 +267,35 @@ function estimate(S, e, stat){
 /* What somebody is actually worth a week, given what they can actually do. */
 HS.recruitWorth = e => Math.round((e.tape * 26 + e.screen * 20 + e.nerve * 14) * 0.9);
 
+/* Nerve is not money. It is how wide the week is allowed to get.
+ *
+ * Tape says what somebody is worth in an average week. Nerve says how far from
+ * average the week is allowed to land: no nerve and they make you a fortune in
+ * March and give it back in April, plenty of nerve and they turn in more or
+ * less the same week every week. Nobody is paid for nerve directly and nobody
+ * should be. What it buys is that your money compounds, which a book that
+ * swings hard both ways never quite does.
+ *
+ * Angela does not flinch, so hers barely moves at all. */
+HS.nerveOf = e => e.special === 'steady' ? Math.min(100, e.nerve * 2) : e.nerve;
+HS.nerveSwing = e => HS.clamp(2.05 - HS.nerveOf(e) / 55, 0.25, 1.9);
+HS.swingWord = function(e){
+  const s = HS.nerveSwing(e);
+  return s <= 0.45 ? 'steady' : s <= 0.85 ? 'even' : s <= 1.35 ? 'streaky' : 'wild';
+};
+
+/* The week is the same week for everybody on the floor. Roll each desk on its
+   own and five traders average each other out into a flat line, which is the
+   opposite of the point: the whole idea is that a bad Friday arrives for the
+   whole room at once and nerve decides who holds on to their book. So most of
+   the roll is one number shared by the desk and only part of it is theirs. */
+HS.MARKET_SHARE = 0.78;
+HS.OWN_SHARE    = 0.42;
+/* A week that turns against somebody costs more than the same week gained,
+   because they sell it. That tilt is the only edge nerve has on the average. */
+HS.PANIC = 1.35;
+HS.DESK_RATE = 0.0080;
+
 /* Meeting one of the ten. The numbers are theirs; the reading is yours, and
    what they will settle for depends on your name. */
 HS.readCandidate = function(S, c){
@@ -551,14 +580,21 @@ HS.rollDay = function(S, ev){
         ev.push({ kind:'bill', text:'Payroll and upkeep. ' + HS.money(wages) + ' out.' });
       }
       let desk = 0;
+      /* Whoever moved the week furthest from their own average, so a swing has
+         a name on it and the player learns something from a bad Friday. */
+      let mover = null, moved = 0;
+      const week = (Math.random() * 2 - 1) * HS.MARKET_SHARE;   /* everyone's week */
       HS.tradersOf(S).forEach(e => {
         const heart = 0.45 + (e.morale / 100) * 0.75;
         const edge = (e.tape / 100) * heart;
-        /* Angela does not flinch, and it shows on the weeks that go wrong. */
-        const nerve = e.special === 'steady' ? Math.min(100, e.nerve * 2) : e.nerve;
-        desk += S.cash * 0.012 * edge * (0.4 + Math.random() * 1.5) -
-                S.cash * 0.006 * (1 - nerve / 100);
+        const par = S.cash * HS.DESK_RATE * edge;
+        const shock = week + (Math.random() * 2 - 1) * HS.OWN_SHARE;
+        const roll = 1 + shock * HS.nerveSwing(e);
+        const took = par * (roll < 1 ? 1 - (1 - roll) * HS.PANIC : roll);
+        desk += took;
+        if(Math.abs(took - par) > Math.abs(moved)){ moved = took - par; mover = e; }
       });
+      const raw = desk;
       desk *= HS.deskMul(S);
       /* Chester doubles the book and takes a quarter of whatever it does, which
          on a bad week means he is paid to have lost you money. */
@@ -582,6 +618,13 @@ HS.rollDay = function(S, ev){
                   text:'The desks cleared ' + HS.signed(desk) + ' this week.' });
         if(cut) ev.push({ kind:'bill', text:'Chester Arbitrage took his quarter. ' +
                           HS.money(cut) + ' of it.' });
+        /* Name the swing. A week that went sideways for no visible reason
+           teaches nobody anything about who they hired. */
+        if(mover && Math.abs(moved) > Math.abs(raw) * 0.3 &&
+           Math.abs(moved) > S.cash * 0.0025 && HS.tradersOf(S).length > 1)
+          ev.push({ kind: moved >= 0 ? 'good' : 'bad',
+            text: moved >= 0 ? 'Most of that was ' + mover.name + '.'
+                             : mover.name + ' gave most of it back.' });
         if(HS.hasMachine(S)) ev.push({ kind:'', text:'Nothing dramatic happened, which is ' +
                           'what you are paying Barack Obalance for.' });
       }

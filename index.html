@@ -168,8 +168,10 @@ body.touch.portrait #rotate{display:flex;}
 .mug-line{padding:5px 9px 0;font-size:9.5px;line-height:1.45;color:var(--faint);
   flex:1 1 auto;min-height:46px;}
 .mug-stats{padding:7px 9px 8px;display:flex;flex-direction:column;gap:3px;}
-.mug-stat{display:grid;grid-template-columns:28px 1fr 46px;gap:4px;align-items:center;}
-.mug-stat .l{font-size:7.5px;letter-spacing:.8px;color:var(--faint);font-weight:700;}
+.mug-stat{display:grid;grid-template-columns:32px 1fr 46px;gap:4px;align-items:center;}
+/* NERVE is the longest of the three labels and has to clear its column, or it
+   runs into the bar next to it. */
+.mug-stat .l{font-size:7px;letter-spacing:.3px;color:var(--faint);font-weight:700;}
 .mug-stat .t{position:relative;height:4px;border-radius:3px;background:#0A0D13;overflow:hidden;}
 .mug-stat .f{position:absolute;top:0;bottom:0;border-radius:3px;}
 /* A stat you have not seen tested is a band, not a number. */
@@ -580,7 +582,7 @@ body.pad .act:hover:not(.locked){transform:none;}
     overflow:hidden;}
   .mug-untested{margin:4px 8px 0;}
   .mug-stats{padding:4px 8px;gap:2px;}
-  .mug-stat{grid-template-columns:26px 1fr 44px;}
+  .mug-stat{grid-template-columns:30px 1fr 44px;}
   .mug-foot{display:none;}
   .mug-wage{padding:4px 8px;}
   .roster-hint{display:none;}

@@ -608,7 +608,9 @@ HS.Game = function(){
           '<div class="meet-face">' + HS.face(c) + '</div>' +
           '<div class="meet-say"><p>' + c.line + '</p>' +
             tallies([
-              ['Tape', band('tape')], ['Screen', band('screen')], ['Nerve', band('nerve')],
+              ['Tape', band('tape')], ['Screen', band('screen')],
+              ['Nerve', band('nerve') + ' · ' +
+                HS.swingWord({ nerve:cand.est.nerve.mid, special:c.special })],
               ['Asking', HS.money(cand.ask) + ' a week']
             ]) +
           '</div></div>' +
@@ -663,6 +665,25 @@ HS.Game = function(){
       '<span class="n">' + HS.statText(e, stat) + '</span></div>';
   }
 
+  /* Nerve does not draw as a bar, because it is not an amount of anything. It
+     draws as how wide their week can be, centred, coloured by how much that
+     should worry you. A stranger's is drawn from what you think their nerve is,
+     with a question mark on it. */
+  const SWING_COLOR = { steady:'var(--green)', even:'var(--gold)',
+                        streaky:'#E8935C', wild:'var(--red)' };
+
+  function swingRow(e){
+    const sure = e.known || !e.est;
+    const as = sure ? e : { nerve:e.est.nerve.mid, special:e.special };
+    const word = HS.swingWord(as);
+    const w = HS.clamp(HS.nerveSwing(as) / 1.05, 0.1, 1) * 100;
+    return '<div class="mug-stat">' +
+      '<span class="l">NERVE</span>' +
+      '<span class="t"><span class="f" style="left:' + ((100 - w) / 2) + '%;width:' + w +
+        '%;background:' + SWING_COLOR[word] + (sure ? '' : ';opacity:.5') + '"></span></span>' +
+      '<span class="n">' + word + (sure ? '' : '?') + '</span></div>';
+  }
+
   function mugshot(e){
     const c = HS.castOf(e.id) || {};
     return '<button class="mug" data-emp="' + e.id + '">' +
@@ -676,8 +697,7 @@ HS.Game = function(){
       '<span class="mug-line"><span>' + (c.line || HS.TIERS[e.tier].blurb) +
       '</span></span>' +
       '<span class="mug-stats">' +
-        statRow(e, 'tape', 'TAPE') + statRow(e, 'screen', 'SCRN') +
-        statRow(e, 'nerve', 'NERVE') +
+        statRow(e, 'tape', 'TAPE') + statRow(e, 'screen', 'SCRN') + swingRow(e) +
       '</span>' +
       '<span class="mug-foot"><span>morale ' + Math.round(e.morale) +
         ' · trust ' + Math.round(HS.trustOf(e)) + '</span></span>' +
