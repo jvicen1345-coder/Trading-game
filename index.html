@@ -323,6 +323,10 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
 /* ---------------- market overlay ---------------- */
 #market{position:fixed;inset:0;z-index:50;display:none;flex-direction:column;background:#080B11;}
 #market.show{display:flex;}
+.mk-leave{padding:6px 12px;border-radius:8px;border:1px solid var(--border);
+  background:rgba(255,255,255,.03);color:var(--dim);font-size:10px;letter-spacing:1.3px;
+  font-weight:700;}
+.mk-leave:hover{color:var(--text);border-color:var(--red);background:rgba(255,91,103,.1);}
 .mk-top{display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--border);
   background:linear-gradient(180deg,#0F131A,#0A0D13);}
 .mk-id h3{margin:0;font-size:13px;letter-spacing:1.5px;font-weight:700;}
@@ -549,6 +553,7 @@ body.pad .act:hover:not(.locked){transform:none;}
   /* a session: give the chain the room to show all five rungs at once */
   .mk-top{padding:5px 10px;gap:9px;}
   .mk-id h3{font-size:12px;} .mk-id .s{display:none;}
+  .mk-leave{padding:4px 8px;font-size:9px;}
   .mk-side{flex:0 0 300px;}
   #mkLog{display:none;}
   .mk-tab{padding:7px 4px;font-size:10px;}
@@ -778,16 +783,19 @@ body.pad .act:hover:not(.locked){transform:none;}
       cursor on it: <b>D-pad</b> or the stick to move, <b>Cross</b> to take it,
       <b>Circle</b> to leave.</p>
     <p class="pbody"><b>In a session</b> the pad has a button for everything, so no cursor:
-      <b>D-pad up and down</b> walk the rungs of the chain and holding <b>L2</b> picks the
-      put instead of the call, <b>L1</b> and <b>R1</b> size the trade down and up,
-      <b>Cross</b> buys, <b>Square</b> sells, <b>Circle</b> closes what you are holding and
-      <b>Triangle</b> changes expiry.</p>
+      <b>D-pad up and down</b> walk the rungs of the chain and <b>left and right</b> switch
+      between the call and the put, <b>L1</b> and <b>R1</b> size the trade down and up,
+      <b>Cross</b> buys, <b>Square</b> sells, <b>Circle</b> closes what you are holding,
+      <b>Triangle</b> changes expiry, <b>R2</b> shows the book you are carrying, and
+      <b>Options</b> leaves the desk. A card that stops the session to explain something
+      takes <b>Cross</b> like any other choice.</p>
     <p class="pbody"><b>In a trading session</b> the chain is sorted by moneyness, not by
       strike. <b>ATM</b> is the balanced bet, <b>OTM</b> is cheap and needs a move,
       <b>DEEP ITM</b> behaves almost like the stock. Pick a call or a put, then
       <kbd>B</kbd> to buy, <kbd>S</kbd> to sell what you hold, <kbd>Tab</kbd> to change expiry,
       <kbd>1</kbd>-<kbd>5</kbd> to pick a rung (<kbd>Shift</kbd> for the put), and
-      <kbd>Space</kbd> to close what you are holding. Your first session stops three times
+      <kbd>Space</kbd> to close what you are holding, and <kbd>Esc</kbd> to leave the desk.
+      Your first session stops three times
       to explain itself and then leaves you alone, and a day trader gets one more pause on
       the first session that is their own money.</p>
     <p class="pbody"><b>Buying and selling.</b> Every position is opened by <b>buying</b> it,
@@ -796,6 +804,11 @@ body.pad .act:hover:not(.locked){transform:none;}
       buys you: an intern may put 25% behind one idea, a partner 88%. The figure under
       <b>SIZE</b> is your limit, and anything above it is struck through. Nothing ever
       reaches past the cash you have, so a position can only cost you what you put in it.</p>
+    <p class="pbody"><b>You can walk away.</b> <b>LEAVE</b> in the corner of the session,
+      <kbd>Esc</kbd>, or <b>Options</b> on a pad takes you off the desk whenever you like.
+      Anything expiring tonight comes off at the mark, exactly as banking a day does;
+      anything with time left on it rides to the next session. If you are holding
+      something you get asked first.</p>
     <p class="pbody"><b>If a day goes badly enough</b> the desk takes the book off you, but not
       on a flinch: the loss has to hold for a few seconds, so a contract that dips and comes
       straight back will not end your session. You get one warning while there is still time
@@ -858,6 +871,7 @@ body.pad .act:hover:not(.locked){transform:none;}
     <div class="mk-stat"><span class="k">EQUITY</span><span class="v" id="mkEquity">$0</span></div>
     <div class="mk-stat"><span class="k">P&amp;L</span><span class="v" id="mkPnl">$0</span></div>
     <div class="mk-clock" id="mkClock">9:30 AM</div>
+    <button class="mk-leave" id="mkLeave" title="Leave the desk (Esc)">LEAVE</button>
   </div>
 
   <div class="mk-obj">

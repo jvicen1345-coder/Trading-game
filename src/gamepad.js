@@ -55,6 +55,12 @@ HS.Pad = function(game, input){
       }));
       return n.length ? { id:tag, items:n } : null;
     };
+    /* A card inside the trading session is still a list of choices. Without
+       this the pad falls through to the market bindings and Cross buys a
+       contract instead of dismissing the card that is covering the screen,
+       which makes the teaching cards on the first day impossible to get past. */
+    if(HS.$('mkBreak').classList.contains('show'))
+      return grab(['#mkBreak button'], 'mkbreak');
     if(HS.$('modal').classList.contains('show'))
       return grab(['#modalBody .mug', '#modalBody .act',
                    '#modalActions .act', '#modalActions button'], 'modal');
@@ -105,7 +111,8 @@ HS.Pad = function(game, input){
       if(game.ui) game.ui.toast('Controller connected.', 'good');
     }
     const now = performance.now();
-    const market = HS.$('market').classList.contains('show');
+    const card = HS.$('mkBreak').classList.contains('show');
+    const market = HS.$('market').classList.contains('show') && !card;
     const list = market ? null : listOf();
     if(list && list.id !== lastList){ lastList = list.id; cursor = 0; paint(list); }
     if(!list){ lastList = ''; if(cursor >= 0){ cursor = -1; paint(null); } }
@@ -141,11 +148,20 @@ HS.Pad = function(game, input){
       if(hit(g, B.square))   key('s');
       if(hit(g, B.circle))   key(' ');
       if(hit(g, B.triangle)) key('Tab');
-      const rung = n => key(String(n), held(g, B.l2));   // hold L2 for the put
-      repeat('u', held(g, B.up)   || ay < -0.55, now, () => { P.rung = Math.max(1, (P.rung||3) - 1); rung(P.rung); });
-      repeat('d', held(g, B.down) || ay > 0.55, now, () => { P.rung = Math.min(5, (P.rung||3) + 1); rung(P.rung); });
-      if(hit(g, B.l1) || hit(g, B.left))  size(-1);
-      if(hit(g, B.r1) || hit(g, B.right)) size(1);
+      /* Up and down walk the rungs, left and right pick the side. Holding a
+         trigger to get a put was a thing nobody found and nobody wants to do
+         with one hand on the stick. */
+      const rung = n => key(String(n), P.put);
+      repeat('u', held(g, B.up)   || ay < -0.55, now,
+        () => { P.rung = Math.max(1, (P.rung || 3) - 1); rung(P.rung); });
+      repeat('d', held(g, B.down) || ay > 0.55, now,
+        () => { P.rung = Math.min(5, (P.rung || 3) + 1); rung(P.rung); });
+      if(hit(g, B.left)  && P.put){ P.put = false; rung(P.rung || 3); }
+      if(hit(g, B.right) && !P.put){ P.put = true;  rung(P.rung || 3); }
+      if(hit(g, B.l1)) size(-1);
+      if(hit(g, B.r1)) size(1);
+      /* the book you are already carrying */
+      if(hit(g, B.r2) || hit(g, B.l2)) tab();
       if(hit(g, B.options)) key('Escape');
     }
 
@@ -164,6 +180,13 @@ HS.Pad = function(game, input){
     prev = g.buttons.map(b => b.pressed);
   };
 
+  /* CHAIN and BOOK are tabs rather than keys, so the pad clicks them. */
+  function tab(){
+    const chain = HS.$('mkTabChain'), book = HS.$('mkTabBook');
+    if(!chain || !book) return;
+    (chain.classList.contains('sel') ? book : chain).click();
+  }
+
   /* Size is a row of buttons rather than a key, so it gets nudged directly. */
   function size(d){
     const row = [...document.querySelectorAll('#mkQty .mk-size')];
@@ -173,6 +196,7 @@ HS.Pad = function(game, input){
     row[i].click();
   }
 
+  P.put = false;
   P.connected = () => connected;
   return P;
 };

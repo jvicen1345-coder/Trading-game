@@ -669,6 +669,19 @@ HS.Market.run = function(opts, done){
     $('mkBreak').classList.add('show');
     coachThen = then || (() => {});
   }
+  /* Backing out of a card without doing the thing it offered. coach() stops
+     the clock, so anything that dismisses a card has to start it again or the
+     session sits there frozen with the tape not moving. */
+  function coachCancel(){
+    coachThen = null;
+    $('mkBreak').classList.remove('show');
+    $('mkBreakStop').style.display = '';
+    $('mkBreakGo').textContent = 'TRADE THE POWER HOUR';
+    $('mkBreakStop').textContent = 'BANK THE DAY';
+    if(!M.finished){ M.running = true; M.last = performance.now(); M.acc = 0;
+                     requestAnimationFrame(frame); }
+  }
+
   function coachDone(){
     const f = coachThen; coachThen = null;
     $('mkBreak').classList.remove('show');
@@ -800,7 +813,7 @@ HS.Market.run = function(opts, done){
          comes off at the mark, because a player who was told they hit their
          number and then watched it settle away has been lied to. Longer
          dated contracts still ride: carrying those is the point of them. */
-      if(reason === 'target'){
+      if(reason === 'target' || reason === 'left'){
         const td = HS.tradingDay(G.day);
         G.positions.slice().filter(p => p.expiryDay <= td)
           .forEach(p => closeById(p.id, true));
@@ -841,29 +854,64 @@ HS.Market.run = function(opts, done){
   function onKey(e){
     if(!M.running) return;
     const k = e.key.toLowerCase();
-    if(k === 'b'){ onBuy(); e.preventDefault(); }
-    else if(k === 's'){ onSell(); e.preventDefault(); }
-    else if(k === ' ' || k === 'f'){ onClose(); e.preventDefault(); }
+    let took = true;
+    if(k === 'b') onBuy();
+    else if(k === 's') onSell();
+    else if(k === ' ' || k === 'f') onClose();
     else if(k === 'tab'){
       M.expIdx = (M.expIdx + 1) % expiries.length; M.selected = null;
-      renderTabs(); renderChain(); sync(); e.preventDefault();
+      renderTabs(); renderChain(); sync();
     }
-    else if(k >= '1' && k <= '5'){ select(MONEY[+k-1], !e.shiftKey); e.preventDefault(); }
+    else if(k >= '1' && k <= '5') select(MONEY[+k-1], !e.shiftKey);
+    else if(k === 'escape') onLeave();
+    else took = false;
+    /* A running session owns its keys. Escape in particular: without this it
+       leaves the desk and then opens the pause menu on the way out. */
+    if(took){ e.preventDefault(); e.stopPropagation(); }
   }
+  /* Walking away. A session you cannot leave is a room with no door, and the
+     player who realises at 10am that they should not be trading today has to
+     be allowed to act on it. Anything expiring tonight comes off at the mark,
+     exactly as banking the day does, because it would die at the bell anyway.
+     Anything longer dated rides, which is the point of carrying it. */
+  let leaveArmed = false;
+  function onLeave(){
+    if(!M.running) return;
+    if(G.positions.length && !leaveArmed){
+      leaveArmed = true;
+      coach('LEAVE THE DESK?', '<p>You are holding <b>' + G.positions.length +
+        (G.positions.length === 1 ? ' position' : ' positions') + '</b>. Anything that ' +
+        'expires tonight comes off at the mark. Anything with time left on it rides to ' +
+        'the next session.</p><p class="dim">The rest of the day goes with you.</p>',
+        'Leave the desk', () => { leaveArmed = false; finish('left'); });
+      $('mkBreakStop').style.display = '';
+      $('mkBreakStop').textContent = 'Stay';
+      return;
+    }
+    finish('left');
+  }
+  const onStay = () => {
+    if(leaveArmed){ leaveArmed = false; coachCancel(); return; }
+    $('mkBreak').classList.remove('show'); finish('target');
+  };
+
   const onPower = () => { if(coachThen) coachDone(); else skipToPowerHour(); };
-  const onBank  = () => { $('mkBreak').classList.remove('show'); finish('target'); };
+
   $('mkBuy').addEventListener('click', onBuy);
   $('mkSell').addEventListener('click', onSell);
   $('mkBreakGo').addEventListener('click', onPower);
-  $('mkBreakStop').addEventListener('click', onBank);
+  $('mkBreakStop').addEventListener('click', onStay);
+  $('mkLeave').addEventListener('click', onLeave);
   document.querySelectorAll('#mkQty .mk-size').forEach(b => b.addEventListener('click', onQty));
   window.addEventListener('keydown', onKey, true);
   function detach(){
     $('mkBuy').removeEventListener('click', onBuy);
     $('mkSell').removeEventListener('click', onSell);
     $('mkBreakGo').removeEventListener('click', onPower);
-    $('mkBreakStop').removeEventListener('click', onBank);
+    $('mkBreakStop').removeEventListener('click', onStay);
+    $('mkLeave').removeEventListener('click', onLeave);
     $('mkBreak').classList.remove('show');
+    $('mkBreakStop').textContent = 'BANK THE DAY';
     $('mkCount').classList.remove('show');
     document.querySelectorAll('#mkQty .mk-size').forEach(b => b.removeEventListener('click', onQty));
     window.removeEventListener('keydown', onKey, true);

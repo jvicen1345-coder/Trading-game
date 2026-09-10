@@ -40,7 +40,8 @@ Everything including three.js is vendored in this folder.
 
 In a trading session: `B` buy, `S` sell, `Space` close what you are holding,
 `Tab` change expiry, `1` to `5` pick a rung of the chain (hold `Shift` for the
-put).
+put), `Esc` leave the desk. Leaving banks the day where it stands: anything
+expiring tonight comes off at the mark, anything longer dated rides.
 
 Every position is opened by **buying** it, and **SELL** closes what you are
 holding. Nothing you do not own is yours to sell.
@@ -65,15 +66,15 @@ mapping and press a button. The game notices and says so.
 | Pad | Walking the city | A list of choices | In a session |
 | --- | --- | --- | --- |
 | Left stick | Walk, rim to sprint | Move the cursor | Pick a rung |
-| `R2` | Sprint | | |
+| `R2` | Sprint | | Chain or book |
 | D-pad | | Move the cursor | Up and down the chain |
+| D-pad left/right | | Move the cursor | Call or put |
 | Cross | Enter a building | Take the choice | Buy |
 | Square | Perk trees | | Sell |
 | Circle | Back out | Back out | Close the position |
 | Triangle | Full city map | | Change expiry |
-| `L2` | | | Hold for the put |
 | `L1` `R1` | Zoom the camera | | Size down and up |
-| Options | Menu | Menu | Menu |
+| Options | Menu | Menu | Leave the desk |
 | Share | Controls | | |
 
 Anywhere the game asks you to choose something the pad puts a gold cursor on
