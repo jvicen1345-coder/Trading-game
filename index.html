@@ -141,6 +141,13 @@ body.touch.portrait #rotate{display:flex;}
 #rotate .scr{width:100%;height:100%;border-radius:3px;background:rgba(232,184,92,.16);}
 @keyframes tip{0%,32%{transform:rotate(0);}62%,100%{transform:rotate(-90deg);}}
 
+/* Meeting somebody: their face next to what they say, so the person you are
+   negotiating with is a person rather than four numbers. */
+.meet-head{display:flex;gap:13px;align-items:flex-start;margin-bottom:6px;}
+.meet-face{flex:0 0 104px;border-radius:11px;overflow:hidden;border:1px solid var(--border);}
+.meet-say{flex:1 1 0;min-width:0;}
+.meet-say > p:first-child{margin-top:0;}
+
 /* ---------------- the roster line-up ---------------- */
 /* Your people read as a row of faces rather than a list of rows. Five of
    these fit a desk, and on a phone the row scrolls sideways rather than
@@ -563,7 +570,9 @@ body.pad .act:hover:not(.locked){transform:none;}
      off the card: they are one tap away on the person's own sheet, and the
      face is what the player came here to read. */
   .mug{flex:0 0 124px;}
-  .mug-art{height:93px;}
+  .mug .mug-art{height:93px;}
+  .meet-face{flex:0 0 76px;}
+  .meet-head{gap:10px;}
   .mug-id{padding:5px 8px 0;}
   .mug-id b{font-size:10.5px;} .mug-id .role{font-size:8px;}
   .mug-line{font-size:9px;min-height:0;padding:3px 8px 0;line-height:1.4;}

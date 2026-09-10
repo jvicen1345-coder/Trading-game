@@ -604,11 +604,14 @@ HS.Game = function(){
     ui.modal({
       title: c.name.toUpperCase(),
       sub: tier.name.toUpperCase() + ' - ' + HS.RECRUIT_SOURCES[c.from].name.toUpperCase(),
-      body:'<p>' + c.line + '</p>' +
-        tallies([
-          ['Tape', band('tape')], ['Screen', band('screen')], ['Nerve', band('nerve')],
-          ['Asking', HS.money(cand.ask) + ' a week']
-        ]) +
+      body:'<div class="meet-head">' +
+          '<div class="meet-face">' + HS.face(c) + '</div>' +
+          '<div class="meet-say"><p>' + c.line + '</p>' +
+            tallies([
+              ['Tape', band('tape')], ['Screen', band('screen')], ['Nerve', band('nerve')],
+              ['Asking', HS.money(cand.ask) + ' a week']
+            ]) +
+          '</div></div>' +
         '<p class="pbody y">' + c.perk + '</p>' +
         '<p class="pbody dim">' + tier.blurb + ' ' +
           (c.tier === 'basic' ? 'Train them at the office and they will go whichever way you point them.'

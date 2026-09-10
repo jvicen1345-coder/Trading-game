@@ -57,7 +57,10 @@ vendor/         three.js r128, vendored so the game runs offline
   That includes the cast's faces: `HS.face(person)` in `faces.js` returns an
   SVG built from an authored `LOOK` entry per person. They are deliberately
   abstract and must stay that way - the names are puns, not portraits, and
-  nothing should try to resemble a real person.
+  nothing should try to resemble a real person. Faces carry one of three moods
+  and there is no fourth: `happy`, `mad`, or `cool`, which is no expression at
+  all. Nobody in this cast is sad, so a downturned mouth and an inner brow
+  lifted toward the middle are not in `faces.js` and should not be added.
 - Phones play in landscape. `body.portrait` gates a rotate overlay and counts as
   an open overlay in `game.js`, which stops the clock behind it. It is set only
   on touch devices, so a narrow desktop window is left alone. The landscape HUD

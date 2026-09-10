@@ -23,6 +23,9 @@ const SHADE = ['#D3A987','#C2916D','#A7714C','#845233','#653D24','#4A2D1C'];
 const SUIT  = ['#2A3140','#333A4B','#232B37','#3A3745','#2F3947'];
 const HAIRC = { black:'#241E19', brown:'#4E3826', sand:'#93724A', auburn:'#7A3F26',
                 grey:'#A19C97', silver:'#CFC9C1', ink:'#1C1C22' };
+/* Brows in the hair colour disappear on a fair head, and a face with no brows
+   has no mood at all, so light hair gets a darker brow than the hair above it. */
+const BROWC = { silver:'#8C867E', grey:'#7A746D', sand:'#6E5334' };
 const TIE   = { gold:'#E8B85C', red:'#E8555F', cyan:'#3ECFCF',
                 violet:'#9B7BD4', green:'#3FD68C', slate:'#63708A' };
 
@@ -75,44 +78,57 @@ const HAIR = {
   bald: ''
 };
 
-/* Brows do more for a face at this size than the eyes do. */
-const BROW = {
-  flat:  'M23 25.6h5.6M35.4 25.6H41',
-  arch:  'M23 26.2q2.8-2.6 5.6 0M35.4 26.2q2.8-2.6 5.6 0',
-  angry: 'M23 24.4l5.6 2M41 24.4l-5.6 2',
-  tired: 'M23 25.6l5.6-1.6M41 25.6l-5.6-1.6'
-};
+/* Three moods and no fourth. Nobody in this cast is sad: they are pleased with
+   themselves, annoyed with you, or giving you nothing. A downturned mouth or an
+   inner brow lifted toward the middle reads as hurt, so neither shape exists
+   here and neither should be added.
 
-const MOUTH = {
-  smile: 'M28.4 40.4q3.6 3 7.2 0',
-  flat:  'M28.8 41.4h6.4',
-  set:   'M28.6 41.6q3.4 1.4 6.8-.6',
-  frown: 'M28.4 41.8q3.6-2.4 7.2 0'
+   Brows do more of this work at sixty pixels than the mouth does. */
+const MOOD = {
+  /* pleased, and not hiding it */
+  happy: { brow:'M23 26.2q2.8-2.6 5.6 0M35.4 26.2q2.8-2.6 5.6 0',
+           mouth:'M28.4 40.4q3.6 3 7.2 0' },
+  /* brows down and in, mouth a tight line */
+  mad:   { brow:'M23 24.4l5.6 2M41 24.4l-5.6 2',
+           mouth:'M28.8 41.4h6.4' },
+  /* nothing on the face at all, which on a trading floor is its own answer */
+  cool:  { brow:'M23 25.6h5.6M35.4 25.6H41',
+           mouth:'M28.6 41.4q3.4.8 6.8 0' }
 };
 
 /* What each of the ten looks like. Authored rather than hashed, because a
    hash gives you ten strangers and this is a cast of ten people. */
 const LOOK = {
+  /* will explain his scanners to anybody who stands still */
   gorithm:   { hair:'side',  hc:'brown',  skin:1, suit:2, tie:'cyan',
-               brow:'flat',  mouth:'flat',  glasses:true },
+               mood:'happy', glasses:true },
+  /* knows everybody in the room */
   pelosini:  { hair:'bob',   hc:'ink',    skin:1, suit:0, tie:'violet',
-               brow:'arch',  mouth:'smile' },
+               mood:'happy' },
+  /* has never once asked what the plan is */
   rosevelt:  { hair:'side',  hc:'brown',  skin:2, suit:1, tie:'red',
-               brow:'flat',  mouth:'set',   stache:true },
+               mood:'cool',  stache:true },
+  /* has not raised her voice in eleven years */
   merkup:    { hair:'bob',   hc:'sand',   skin:0, suit:3, tie:'green',
-               brow:'flat',  mouth:'set' },
+               mood:'cool' },
+  /* extremely watchable */
   trudough:  { hair:'pomp',  hc:'black',  skin:2, suit:4, tie:'gold',
-               brow:'arch',  mouth:'smile' },
+               mood:'happy' },
+  /* thinks a webcam is a confession */
   churnwell: { hair:'horse', hc:'silver', skin:1, suit:2, tie:'slate',
-               brow:'tired', mouth:'frown', jowl:true },
+               mood:'mad',   jowl:true },
+  /* asked to leave two firms, profitable at both */
   hatcher:   { hair:'updo',  hc:'sand',   skin:0, suit:1, tie:'cyan',
-               brow:'angry', mouth:'flat' },
+               mood:'mad' },
+  /* ran risk at a bank that no longer exists, and mentions it */
   brownout:  { hair:'buzz',  hc:'grey',   skin:1, suit:0, tie:'slate',
-               brow:'tired', mouth:'frown', glasses:true },
+               mood:'cool',  glasses:true },
+  /* nobody asks him twice */
   arbitrage: { hair:'buzz',  hc:'ink',    skin:4, suit:2, tie:'gold',
-               brow:'angry', mouth:'flat',  beard:true },
+               mood:'mad',   beard:true },
+  /* has not had a losing month since 2011 */
   obalance:  { hair:'curl',  hc:'grey',   skin:3, suit:1, tie:'red',
-               brow:'flat',  mouth:'smile' }
+               mood:'happy' }
 };
 
 const esc = s => String(s).replace(/[^A-Za-z0-9_-]/g, '');
@@ -129,6 +145,7 @@ HS.face = function(p, px){
   const uid = 'f' + esc(p && p.id);
   const size = px ? ' width="' + px + '" height="' + Math.round(px * 76 / 64) + '"' : '';
   const hairPath = HAIR[L.hair] || '';
+  const mood = MOOD[L.mood] || MOOD.cool;
   const behind = L.hair === 'long' || L.hair === 'bob';
 
   /* Given a fixed height shorter than the art, crop rather than squash, and
@@ -186,15 +203,15 @@ HS.face = function(p, px){
                  hair + '"/>' : '') +
 
       /* the face. Brows carry the character, so they go on heavy. */
-      '<path d="' + (BROW[L.brow] || BROW.flat) + '" stroke="' + hair +
-        '" stroke-width="2" stroke-linecap="round" fill="none"/>' +
+      '<path d="' + mood.brow + '" stroke="' + (BROWC[L.hc] || hair) +
+        '" stroke-width="2.1" stroke-linecap="round" fill="none"/>' +
       '<ellipse cx="26.4" cy="31.4" rx="2" ry="2.4" fill="#2A2F3A"/>' +
       '<ellipse cx="37.6" cy="31.4" rx="2" ry="2.4" fill="#2A2F3A"/>' +
       '<circle cx="27" cy="30.6" r=".7" fill="#FFFFFF" opacity=".75"/>' +
       '<circle cx="38.2" cy="30.6" r=".7" fill="#FFFFFF" opacity=".75"/>' +
       '<path d="M32 33.6v2.8q0 1.2-1.4 1.6" stroke="' + shade +
         '" stroke-width="1.2" stroke-linecap="round" fill="none" opacity=".85"/>' +
-      '<path d="' + (MOUTH[L.mouth] || MOUTH.flat) + '" stroke="#8A4C46" ' +
+      '<path d="' + mood.mouth + '" stroke="#8A4C46" ' +
         'stroke-width="1.6" stroke-linecap="round" fill="none"/>' +
       (L.stache || L.beard ? '<path d="M27.6 39q4.4-2 8.8 0" stroke="' + hair +
                   '" stroke-width="2.6" stroke-linecap="round" fill="none"/>' : '') +
