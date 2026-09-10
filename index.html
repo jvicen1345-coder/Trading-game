@@ -557,16 +557,23 @@ body.pad .act:hover:not(.locked){transform:none;}
   #mkBookPane{max-height:none;}
   /* a line-up on a phone: narrower cards, and the portrait cropped rather
      than left to eat half the screen */
-  .mug{flex:0 0 136px;}
-  .mug-art{height:58px;}
-  .mug-id{padding-top:6px;}
+  /* A phone in landscape has 390px of height for the whole line-up, and a
+     portrait wide enough to show a whole head needs most of it. So the cards
+     go narrow and tall, the line is trimmed to two, and morale and trust move
+     off the card: they are one tap away on the person's own sheet, and the
+     face is what the player came here to read. */
+  .mug{flex:0 0 124px;}
+  .mug-art{height:93px;}
+  .mug-id{padding:5px 8px 0;}
   .mug-id b{font-size:10.5px;} .mug-id .role{font-size:8px;}
-  /* the whole line-up has to fit 390px of screen, so a long line is trimmed
-     rather than allowed to push the wages off the bottom */
-  .mug-line{font-size:9px;min-height:0;padding-top:4px;line-height:1.4;
-    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
-  .mug-stats{padding:5px 8px 5px;gap:2px;}
-  .mug-foot,.mug-wage{padding:4px 8px;}
+  .mug-line{font-size:9px;min-height:0;padding:3px 8px 0;line-height:1.4;}
+  .mug-line > span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+    overflow:hidden;}
+  .mug-untested{margin:4px 8px 0;}
+  .mug-stats{padding:4px 8px;gap:2px;}
+  .mug-stat{grid-template-columns:26px 1fr 44px;}
+  .mug-foot{display:none;}
+  .mug-wage{padding:4px 8px;}
   .roster-hint{display:none;}
   /* the title card is taller than a phone on its side, and #title clips
      rather than scrolls, so it gets compressed instead of cut off */
@@ -577,8 +584,9 @@ body.pad .act:hover:not(.locked){transform:none;}
   #title p{font-size:11.5px;line-height:1.5;margin:0 0 4px;}
   #title p.beat{margin:8px 0 3px;}
   #title .card{padding:14px 18px;}
-  .btn{padding:9px;font-size:12px;margin-top:6px;}
-  .card{padding:13px;}
+  .btn{padding:8px;font-size:12px;margin-top:5px;}
+  .card{padding:11px;}
+  .line-up{padding-bottom:5px;}
   .sheet{padding:10px;}
 }
 @media(max-width:560px){

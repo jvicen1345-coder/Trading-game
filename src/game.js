@@ -668,7 +668,10 @@ HS.Game = function(){
         '<span class="role">' + HS.ROLES[e.role].name.toUpperCase() + ' · ' +
         HS.TIERS[e.tier].name.toUpperCase() + '</span></span>' +
       (e.known ? '' : '<span class="mug-untested">NOT YET TESTED</span>') +
-      '<span class="mug-line">' + (c.line || HS.TIERS[e.tier].blurb) + '</span>' +
+      /* The line lives in an inner span so a phone can clamp it. A flex item
+         cannot: the browser blockifies its display and the clamp is dropped. */
+      '<span class="mug-line"><span>' + (c.line || HS.TIERS[e.tier].blurb) +
+      '</span></span>' +
       '<span class="mug-stats">' +
         statRow(e, 'tape', 'TAPE') + statRow(e, 'screen', 'SCRN') +
         statRow(e, 'nerve', 'NERVE') +
