@@ -38,6 +38,7 @@ src/perks.js    the three perk constellations
 src/room.js     your room and its furniture
 src/city.js     procedural city, street props, traffic
 src/skyline.js  animated title screen backdrop
+src/faces.js    the cast's portraits, drawn as SVG
 src/world.js    renderer, camera, day/night
 src/player.js   avatar, movement, collision
 src/ui.js       HUD, panels, minimap
@@ -53,6 +54,10 @@ vendor/         three.js r128, vendored so the game runs offline
   connection, no API key and no market data anywhere in this repo, and none
   should ever be added.
 - All textures and audio are generated at load. There are no asset files.
+  That includes the cast's faces: `HS.face(person)` in `faces.js` returns an
+  SVG built from an authored `LOOK` entry per person. They are deliberately
+  abstract and must stay that way - the names are puns, not portraits, and
+  nothing should try to resemble a real person.
 - Phones play in landscape. `body.portrait` gates a rotate overlay and counts as
   an open overlay in `game.js`, which stops the clock behind it. It is set only
   on touch devices, so a narrow desktop window is left alone. The landscape HUD

@@ -639,6 +639,47 @@ HS.Game = function(){
     });
   };
 
+  /* One face in the line-up: the portrait, what they are here for, the one
+     line that is theirs, and the three numbers underneath.
+
+     A stat you have never seen under pressure is drawn as a band rather than
+     a bar, so an untested hire looks uncertain instead of precise. */
+  const STAT_COLOR = { tape:'var(--cyan)', screen:'var(--violet)', nerve:'var(--gold)' };
+
+  function statRow(e, stat, label){
+    const band = !e.known && e.est;
+    const b = band ? e.est[stat] : null;
+    const lo = band ? b.lo : 0, hi = band ? b.hi : e[stat];
+    const fill = band
+      ? 'left:' + lo + '%;width:' + Math.max(2, hi - lo) + '%'
+      : 'left:0;width:' + HS.clamp(e[stat], 0, 100) + '%';
+    return '<div class="mug-stat' + (band ? ' band' : '') + '">' +
+      '<span class="l">' + label + '</span>' +
+      '<span class="t"><span class="f' + (band ? ' band' : '') + '" style="' + fill +
+        ';background:' + STAT_COLOR[stat] + '"></span></span>' +
+      '<span class="n">' + HS.statText(e, stat) + '</span></div>';
+  }
+
+  function mugshot(e){
+    const c = HS.castOf(e.id) || {};
+    return '<button class="mug" data-emp="' + e.id + '">' +
+      HS.face(e) +
+      '<span class="mug-id"><b>' + e.name + '</b>' +
+        '<span class="role">' + HS.ROLES[e.role].name.toUpperCase() + ' · ' +
+        HS.TIERS[e.tier].name.toUpperCase() + '</span></span>' +
+      (e.known ? '' : '<span class="mug-untested">NOT YET TESTED</span>') +
+      '<span class="mug-line">' + (c.line || HS.TIERS[e.tier].blurb) + '</span>' +
+      '<span class="mug-stats">' +
+        statRow(e, 'tape', 'TAPE') + statRow(e, 'screen', 'SCRN') +
+        statRow(e, 'nerve', 'NERVE') +
+      '</span>' +
+      '<span class="mug-foot"><span>morale ' + Math.round(e.morale) +
+        ' · trust ' + Math.round(HS.trustOf(e)) + '</span></span>' +
+      '<span class="mug-wage">' + (e.wage ? HS.money(e.wage) + ' a week' : 'no wage') +
+      '</span>' +
+    '</button>';
+  }
+
   /* The roster. Who trades, who fronts the channel, and who is dead weight. */
   G.openRoster = function(){
     const S = G.S;
@@ -649,16 +690,7 @@ HS.Game = function(){
         actions:[{ label:'Right', onClick:()=>ui.closeModal() }] });
       return;
     }
-    const rows = team.map(e =>
-      '<button class="act" data-emp="' + e.id + '">' +
-        '<span class="act-main">' + e.name + '  <span class="dim">' + HS.ROLES[e.role].name +
-          ' · ' + HS.TIERS[e.tier].name + '</span></span>' +
-        '<span class="act-detail">Tape ' + HS.statText(e,'tape') + ' · Screen ' + HS.statText(e,'screen') +
-          ' · Nerve ' + HS.statText(e,'nerve') + ' · morale ' + Math.round(e.morale) +
-          ' · trust ' + Math.round(HS.trustOf(e)) +
-          (e.known ? '' : ' · <span class="dim">not yet tested</span>') + '</span>' +
-        '<span class="act-cost">' + HS.money(e.wage) + ' a week</span>' +
-      '</button>').join('');
+    const rows = '<div class="line-up">' + team.map(e => mugshot(e)).join('') + '</div>';
     /* People you have met and not seated are still people you can call. */
     const known = HS.metNotHired(S);
     const waiting = known.length
@@ -672,8 +704,9 @@ HS.Game = function(){
     ui.modal({
       title:'YOUR PEOPLE', sub: HS.OFFICES[S.office||0].name.toUpperCase() + ' · ' +
         team.length + ' of ' + HS.teamSeats(S) + ' seats',
-      body:'<p class="pbody dim">Tap somebody to change what they do or teach them something.</p>' +
-        '<div class="acts">' + rows + '</div>' + waiting,
+      wide:true,
+      body:'<p class="pbody dim roster-hint">Tap somebody to change what they do or ' +
+        'teach them something.</p>' + rows + waiting,
       actions:[{ label:'Done', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }]
     });
     document.querySelectorAll('#modalBody [data-emp]').forEach(btn => {

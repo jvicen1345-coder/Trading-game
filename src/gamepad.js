@@ -56,7 +56,8 @@ HS.Pad = function(game, input){
       return n.length ? { id:tag, items:n } : null;
     };
     if(HS.$('modal').classList.contains('show'))
-      return grab(['#modalBody .act', '#modalActions .act', '#modalActions button'], 'modal');
+      return grab(['#modalBody .mug', '#modalBody .act',
+                   '#modalActions .act', '#modalActions button'], 'modal');
     for(const id of ['help','room','perks','bigmap'])
       if(HS.$(id).classList.contains('show')) return grab(['#' + id + ' button'], id);
     if(HS.$('menu').classList.contains('show')) return grab(['#menu button'], 'menu');
@@ -120,8 +121,11 @@ HS.Pad = function(game, input){
 
     /* ---- a cursor over a list of choices ---- */
     if(list){
-      const up = held(g, B.up) || ay < -0.55;
-      const dn = held(g, B.down) || ay > 0.55;
+      /* Left and right walk the same list as up and down. Most of these are
+         stacked, but a line-up of faces runs across, and reaching for the
+         D-pad direction the row actually points in should not do nothing. */
+      const up = held(g, B.up)   || held(g, B.left)  || ay < -0.55 || ax < -0.55;
+      const dn = held(g, B.down) || held(g, B.right) || ay >  0.55 || ax >  0.55;
       repeat('u', up, now, () => move(list, -1));
       repeat('d', dn, now, () => move(list, 1));
       if(hit(g, B.cross)){

@@ -109,6 +109,8 @@ HS.UI = function(game){
     $('modalSub').textContent = opts.sub || '';
     $('modalSub').style.display = opts.sub ? '' : 'none';
     $('modalBody').innerHTML = opts.body || '';
+    /* A line-up of faces needs more width than a paragraph does. */
+    m.querySelector('.card').classList.toggle('wide', !!opts.wide);
 
     const list = opts.actions || [{ label:'OK', onClick:()=>U.closeModal() }];
     const acts = $('modalActions');
