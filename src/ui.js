@@ -134,6 +134,10 @@ HS.UI = function(game){
       if(!a.disabled) b.addEventListener('click', () => { HS.Audio.click(); a.onClick(); });
       acts.appendChild(b);
     });
+    /* A short screen lays a modal out in two columns, but only when there is a
+       real choice to put in the second one. One way out and it just squeezes
+       the prose into half the width and leaves the other half empty. */
+    m.querySelector('.card').classList.toggle('split', list.length > 1);
     m.classList.add('show');
   };
   U.closeModal = function(){ $('modal').classList.remove('show'); };

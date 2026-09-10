@@ -584,6 +584,41 @@ body.pad .act:hover:not(.locked){transform:none;}
   .mug-foot{display:none;}
   .mug-wage{padding:4px 8px;}
   .roster-hint{display:none;}
+
+  /* ---- modal type, tightened for a short screen ---- */
+  .card h2,.modal-title{font-size:15px;letter-spacing:1px;margin-bottom:4px;}
+  .card .sub{margin-bottom:8px;font-size:8.5px;}
+  .pbody,#modalBody p{font-size:11px;line-height:1.45;margin-bottom:7px;}
+  .tallies{gap:3px;margin:8px 0 3px;}
+  .tally{padding:4px 9px;font-size:11px;} .tally .k{font-size:9.5px;}
+  .stats-grid{gap:5px;margin:8px 0;} .stat{padding:5px 8px;}
+  .stat .v{font-size:12px;}
+  .acts{gap:5px;margin-top:8px;}
+  .act{padding:7px 10px;border-radius:9px;}
+  .act .act-main{font-size:11.5px;}
+  .act .act-detail{font-size:9.5px;line-height:1.35;}
+  .act .act-cost{font-size:9px;margin-top:1px;}
+  .act .act-why{font-size:9px;margin-top:2px;}
+  .closex{right:10px;top:8px;width:24px;height:24px;font-size:14px;}
+  svg.cross{height:92px;margin-bottom:8px;}
+}
+
+/* A phone in landscape is wide and short, which is the wrong shape for one
+   long column: on the screen where you meet somebody the offers ended up below
+   the fold. Wide and short is the right shape for two columns, so what is
+   being said goes left and what you can do about it goes right, each scrolling
+   on its own. The line-up is exempt: it needs the full width for five faces. */
+@media(max-height:500px) and (min-width:660px){
+  #modal .card.split:not(.wide){
+    display:grid;grid-template-columns:1fr 1fr;column-gap:14px;
+    grid-template-areas:"title title" "sub sub" "body acts";
+    max-height:calc(100vh - 20px);overflow:hidden;
+  }
+  #modal .card.split:not(.wide) .modal-title{grid-area:title;}
+  #modal .card.split:not(.wide) .sub{grid-area:sub;}
+  #modal .card.split:not(.wide) #modalBody{grid-area:body;overflow-y:auto;min-height:0;}
+  #modal .card.split:not(.wide) #modalActions{grid-area:acts;overflow-y:auto;min-height:0;margin-top:0;}
+  #modal .card.split:not(.wide) #modalBody p:last-child{margin-bottom:0;}
   /* the title card is taller than a phone on its side, and #title clips
      rather than scrolls, so it gets compressed instead of cut off */
   #title{padding:10px;overflow-y:auto;}
