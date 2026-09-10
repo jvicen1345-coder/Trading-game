@@ -796,18 +796,27 @@ HS.Game = function(){
     const rate = 3.4 * tier.train * (0.7 + S.skill / 140);
     const stuck = e.tier === 'sharp' && e.talked < 3;
 
-    const put = stat => ({
-      label:'Put it into ' + stat.charAt(0).toUpperCase() + stat.slice(1),
-      detail: stat === 'tape' ? 'Reading the market, which is what they earn on'
-            : stat === 'screen' ? 'Carrying a room, which is what the channel runs on'
-            : 'Holding up when a week turns, which is what stops the bleeding',
-      cost: '2h · ' + price + ' energy · about +' + rate.toFixed(1),
-      disabled: S.energy < price || tier.train === 0 || stuck || e[stat] >= 99,
-      why: tier.train === 0 ? 'They did not come here to be taught'
-         : stuck ? 'They are not listening to you yet'
-         : e[stat] >= 99 ? 'There is nothing left to add' : 'Not enough energy',
-      onClick: () => { ui.closeModal(); G.train(e.id, stat, rate); }
-    });
+    /* Nerve runs the other way to the other two. You are not adding nerve to
+       somebody, you are taking it off them, so the label, the arrow on the
+       cost and the point at which there is nothing left to do all invert. */
+    const put = stat => {
+      const down = stat === 'nerve';
+      const spent = down ? e.nerve <= 2 : e[stat] >= 99;
+      return {
+        label: down ? 'Talk them down'
+                    : 'Put it into ' + stat.charAt(0).toUpperCase() + stat.slice(1),
+        detail: stat === 'tape' ? 'Reading the market, which is what they earn on'
+              : stat === 'screen' ? 'Carrying a room, which is what the channel runs on'
+              : 'Nerve, which is what makes them cut a winner and bet the week',
+        cost: '2h · ' + price + ' energy · about ' + (down ? '-' : '+') + rate.toFixed(1),
+        disabled: S.energy < price || tier.train === 0 || stuck || spent,
+        why: tier.train === 0 ? 'They did not come here to be taught'
+           : stuck ? 'They are not listening to you yet'
+           : spent ? (down ? 'There is nothing left to take off them'
+                           : 'There is nothing left to add') : 'Not enough energy',
+        onClick: () => { ui.closeModal(); G.train(e.id, stat, rate); }
+      };
+    };
 
     const acts = [put('tape'), put('screen'), put('nerve')];
     if(e.tier === 'sharp' && e.talked < 3){
@@ -849,7 +858,7 @@ HS.Game = function(){
     G.spendTime(2);
     HS.addEnergy(S, -Math.max(2, Math.round(HS.energyCost(S, HS.ENERGY.classB) * HS.trainMult(e))));
     const before = e[stat];
-    e[stat] = Math.min(99, e[stat] + rate);
+    e[stat] = stat === 'nerve' ? Math.max(1, e.nerve - rate) : Math.min(99, e[stat] + rate);
     e.trained = (e.trained || 0) + 1;
     e.morale = HS.clamp(e.morale + 2, 0, 100);
     e.known = true;                      /* you cannot teach somebody and not learn them */

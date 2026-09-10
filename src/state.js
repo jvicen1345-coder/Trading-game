@@ -137,8 +137,8 @@ HS.OFFICES = [
 ];
 
 /* Three things an employee can be good at, and they are rarely the same
-   person. Tape earns on the book, Screen carries an audience, Nerve is
-   what stops them folding on a red day. */
+   person. Tape earns on the book, Screen carries an audience, and Nerve is
+   nervous energy: the less of it somebody has, the better. */
 HS.ROLES = {
   trader:   { id:'trader',   name:'Trader',   blurb:'Runs part of your book' },
   streamer: { id:'streamer', name:'Streamer', blurb:'Fronts the channel while you trade' },
@@ -170,49 +170,49 @@ HS.TIERS = {
 HS.CAST = [
   /* ---- five green, similar on paper, each with one thing of their own ---- */
   { id:'gorithm', name:'Al Gorithm', tier:'basic', from:'exchange', need:{},
-    tape:44, screen:31, nerve:42, wage:2100, special:'quant',
+    tape:44, screen:31, nerve:38, wage:2100, special:'quant',
     line:'Writes his own scanners and will explain them to anybody who stands still.',
     perk:'Learns from your chart reviews: every review you do adds to his tape.' },
   { id:'pelosini', name:'Nancy Pelosini', tier:'basic', from:'bar', need:{},
-    tape:38, screen:46, nerve:39, wage:2200, special:'connected',
+    tape:38, screen:46, nerve:46, wage:2200, special:'connected',
     line:'Knows everybody in the room and which of them is worth knowing.',
     perk:'Working a room at the bar earns you half again as much reputation.' },
   { id:'rosevelt', name:'Teddy Rosevelt', tier:'basic', from:'exchange', need:{},
-    tape:41, screen:34, nerve:47, wage:2000, special:'grinder',
+    tape:41, screen:34, nerve:30, wage:2000, special:'grinder',
     line:'First in, last out, and has never once asked what the plan is.',
     perk:'Never loses heart when you are too busy to come in.' },
   { id:'merkup', name:'Angela Merkup', tier:'basic', from:'bar', need:{},
-    tape:40, screen:36, nerve:49, wage:2250, special:'steady',
+    tape:40, screen:36, nerve:18, wage:2250, special:'steady',
     line:'Has not raised her voice in eleven years of doing this.',
     perk:'Her nerve counts twice when a week goes against the desks.' },
   { id:'trudough', name:'Justin Trudough', tier:'basic', from:'channel', need:{},
-    tape:33, screen:52, nerve:36, wage:2150, special:'camera',
+    tape:33, screen:52, nerve:72, wage:2150, special:'camera',
     line:'Extremely watchable and only occasionally right, which turns out to be enough.',
     perk:'Converts a following into subscribers half again as fast.' },
 
   /* ---- three who are already good and know it ---- */
   { id:'churnwell', name:'Winston Churnwell', tier:'sharp', from:'exchange', need:{ rep:38 },
-    tape:74, screen:22, nerve:63, wage:5200, special:'oldschool',
+    tape:74, screen:22, nerve:34, wage:5200, special:'oldschool',
     line:'Traded the pit for nineteen years and thinks a webcam is a confession.',
     perk:'Adds a quarter to what the desks clear, and will not go near the channel.' },
   { id:'hatcher', name:'Margaret Hatcher', tier:'sharp', from:'bar', need:{ rep:45 },
-    tape:78, screen:55, nerve:58, wage:6400, special:'ruthless',
+    tape:78, screen:55, nerve:78, wage:6400, special:'ruthless',
     line:'Has been asked to leave two firms and was profitable at both.',
     perk:'Adds a third to the desks and a little heat every week she is here.' },
   { id:'brownout', name:'Gordon Brownout', tier:'sharp', from:'exchange', need:{ rep:40 },
-    tape:52, screen:28, nerve:88, wage:5000, special:'riskman',
+    tape:52, screen:28, nerve:16, wage:5000, special:'riskman',
     line:'Ran risk at a bank that no longer exists, which he mentions often.',
     perk:'Buys you five more points of rope before the desk pulls your book.' },
 
   /* ---- two who are better than you, and cannot stand each other ---- */
   { id:'arbitrage', name:'Chester Arbitrage', tier:'god', from:'exchange',
     need:{ rep:62, office:2 }, rival:'obalance',
-    tape:96, screen:44, nerve:71, wage:0, special:'alpha',
+    tape:96, screen:44, nerve:66, wage:0, special:'alpha',
     line:'Nobody knows where he was before this and nobody asks him twice.',
     perk:'Doubles what the desks clear and takes a quarter of it, up and down.' },
   { id:'obalance', name:'Barack Obalance', tier:'god', from:'channel',
     need:{ rep:58, followers:20000 }, rival:'arbitrage',
-    tape:88, screen:79, nerve:94, wage:11000, special:'machine',
+    tape:88, screen:79, nerve:12, wage:11000, special:'machine',
     line:'Speaks in whole paragraphs and has not had a losing month since 2011.',
     perk:'The desks never lose in a week, and never make a killing either.' }
 ];
@@ -265,23 +265,99 @@ function estimate(S, e, stat){
 }
 
 /* What somebody is actually worth a week, given what they can actually do. */
-HS.recruitWorth = e => Math.round((e.tape * 26 + e.screen * 20 + e.nerve * 14) * 0.9);
+/* Calm is the thing that costs money. Nerve counts against what somebody is
+   worth, not toward it. */
+HS.recruitWorth = e => Math.round((e.tape * 26 + e.screen * 20 +
+                                   (100 - e.nerve) * 14) * 0.9);
 
-/* Nerve is not money. It is how wide the week is allowed to get.
+/* Nerve is nervous energy, and less of it is better.
  *
- * Tape says what somebody is worth in an average week. Nerve says how far from
- * average the week is allowed to land: no nerve and they make you a fortune in
- * March and give it back in April, plenty of nerve and they turn in more or
- * less the same week every week. Nobody is paid for nerve directly and nobody
- * should be. What it buys is that your money compounds, which a book that
- * swings hard both ways never quite does.
+ * A trader with none of it sits on a position all afternoon, sizes the same way
+ * on Friday as on Monday and says nothing on the internet they would not say to
+ * the desk. A trader full of it cuts a winner the second it wobbles, puts the
+ * week on one idea because they cannot stand watching, melts down in front of
+ * an audience, and at the far end simply does not come in.
  *
- * Angela does not flinch, so hers barely moves at all. */
-HS.nerveOf = e => e.special === 'steady' ? Math.min(100, e.nerve * 2) : e.nerve;
-HS.nerveSwing = e => HS.clamp(2.05 - HS.nerveOf(e) / 55, 0.25, 1.9);
+ * So low nerve is calm and expensive, high nerve is jumpy and cheap. Nothing
+ * here is paid for nerve directly. What calm buys is that your money compounds,
+ * which a book that swings hard both ways never quite does.
+ *
+ * Angela has not raised her voice in eleven years, so hers is halved again. */
+HS.nerveOf = e => e.special === 'steady' ? e.nerve * 0.5 : e.nerve;
+HS.nerveSwing = e => HS.clamp(HS.nerveOf(e) / 42, 0.2, 1.9);
 HS.swingWord = function(e){
   const s = HS.nerveSwing(e);
   return s <= 0.45 ? 'steady' : s <= 0.85 ? 'even' : s <= 1.35 ? 'streaky' : 'wild';
+};
+
+/* One thing that happened to one trader this week, with a name on it. Nerve
+   decides which end of the list they are drawing from: the jumpy end cuts
+   winners, bets the week on one idea, melts down in public and at the far end
+   simply does not come in; the calm end sits on a position, keeps the size the
+   same as every other week, and posts something worth reading. */
+HS.deskWeek = function(S, e, took, par){
+  const n = HS.nerveOf(e);
+  const out = { take:took, ev:null };
+  const r = Math.random();
+  const jumpy = n / 100 * 0.5;
+  const calm  = (1 - n / 100) * 0.34;
+
+  if(r < jumpy){
+    const pick = Math.random();
+    if(pick < 0.12 && n >= 55){
+      out.take = 0;
+      e.morale = HS.clamp(e.morale + 14, 0, 100);
+      out.ev = { kind:'bad', text: e.name + ' did not come in and did not answer all week. ' +
+        'Back on Monday, calmer, and sorry about it.' };
+    } else if(pick < 0.66){
+      out.take = par * 0.22;
+      out.ev = { kind:'', text: e.name + ' cut everything the moment it moved against them.' };
+    } else {
+      const came = Math.random() < 0.42;
+      out.take = par * (came ? 3.1 : -2.4);
+      out.ev = { kind: came ? 'good' : 'bad',
+                 text: e.name + ' put the week on one idea. ' +
+                       (came ? 'It came in.' : 'It did not.') };
+    }
+  } else if(r > 1 - calm){
+    const pick = Math.random();
+    if(pick < 0.62){
+      out.take = took * 1.5;
+      out.ev = { kind:'good', text: e.name + ' sat on it until the close.' };
+    } else if(took < 0){
+      out.take = took * 0.4;
+      out.ev = { kind:'', text: e.name + ' kept the size down while it was going wrong.' };
+    } else {
+      out.take = took * 1.2;
+      out.ev = { kind:'', text: e.name + ' sized it the same as every other week.' };
+    }
+  }
+  return out;
+};
+
+/* Whoever fronts the channel has a week too, and the same nerve decides how it
+   goes. None of this touches the book: it happens in public, in front of the
+   audience you spent months building, which is the whole reason it stings. */
+HS.channelWeek = function(S, e){
+  if(!HS.hasChannel(S) || !e) return null;
+  const n = HS.nerveOf(e);
+  const r = Math.random();
+  const num = v => Math.round(v).toLocaleString();
+  if(r < n / 100 * 0.34){
+    const lost = Math.round(S.stream.followers * 0.16);
+    S.stream.followers = Math.max(0, S.stream.followers - lost);
+    e.morale = HS.clamp(e.morale - 12, 0, 100);
+    return { kind:'bad', text: e.name + ' lost it live on the channel. ' + num(lost) +
+      ' people watched that and then left.' };
+  }
+  if(r > 1 - (1 - n / 100) * 0.30){
+    const got = Math.round(240 + S.stream.followers * 0.07);
+    S.stream.followers += got;
+    e.morale = HS.clamp(e.morale + 6, 0, 100);
+    return { kind:'good', text: e.name + ' posted all week and none of it was shouting. ' +
+      num(got) + ' more following.' };
+  }
+  return null;
 };
 
 /* The week is the same week for everybody on the floor. Roll each desk on its
@@ -583,6 +659,7 @@ HS.rollDay = function(S, ev){
       /* Whoever moved the week furthest from their own average, so a swing has
          a name on it and the player learns something from a bad Friday. */
       let mover = null, moved = 0;
+      const told = [];
       const week = (Math.random() * 2 - 1) * HS.MARKET_SHARE;   /* everyone's week */
       HS.tradersOf(S).forEach(e => {
         const heart = 0.45 + (e.morale / 100) * 0.75;
@@ -590,7 +667,10 @@ HS.rollDay = function(S, ev){
         const par = S.cash * HS.DESK_RATE * edge;
         const shock = week + (Math.random() * 2 - 1) * HS.OWN_SHARE;
         const roll = 1 + shock * HS.nerveSwing(e);
-        const took = par * (roll < 1 ? 1 - (1 - roll) * HS.PANIC : roll);
+        let took = par * (roll < 1 ? 1 - (1 - roll) * HS.PANIC : roll);
+        const what = HS.deskWeek(S, e, took, par);
+        took = what.take;
+        if(what.ev) told.push(what.ev);
         desk += took;
         if(Math.abs(took - par) > Math.abs(moved)){ moved = took - par; mover = e; }
       });
@@ -616,6 +696,9 @@ HS.rollDay = function(S, ev){
         S.cash += desk;
         ev.push({ kind: desk >= 0 ? 'good' : 'bad',
                   text:'The desks cleared ' + HS.signed(desk) + ' this week.' });
+        const air = HS.channelWeek(S, HS.streamerOf(S));
+        if(air) told.push(air);
+        told.forEach(t => ev.push(t));
         if(cut) ev.push({ kind:'bill', text:'Chester Arbitrage took his quarter. ' +
                           HS.money(cut) + ' of it.' });
         /* Name the swing. A week that went sideways for no visible reason

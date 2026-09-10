@@ -84,13 +84,20 @@ vendor/         three.js r128, vendored so the game runs offline
 - With no office there is no payroll: the first two seats cost nothing, quit at
   a much higher morale floor, and build `trust` on good weeks which discounts
   training. Taking the lease starts the wage bill.
-- Nerve is not income, it is variance. `HS.nerveSwing` turns it into how wide a
-  trader's week can be, and the weekly desk roll is mostly one shared market
-  number so a bad Friday arrives for the whole room at once. Roll each desk
-  independently and five traders average into a flat line, which defeats the
-  point. Losses are tilted by `HS.PANIC` because a week that turns costs more
-  than the same week gained. The roster and the meet screen show the swing as a
-  word, so the risk can be priced before it is bought.
+- Nerve is nervous energy and **less of it is better**, which is the opposite
+  way round to Tape and Screen. `HS.nerveSwing` turns it into how wide a
+  trader's week can be, and `HS.deskWeek` turns it into things that happen with
+  a name on them: cutting a winner early, betting the week on one idea, melting
+  down on the channel, or at the far end not coming in at all. Calm buys the
+  other list. `HS.channelWeek` is the same roll for whoever fronts the channel,
+  and it has to be called separately because the desk loop only walks traders.
+  Training nerve takes it **off** somebody rather than adding it, so `G.train`
+  and the trainer's labels special-case it. `HS.recruitWorth` counts calm, not
+  nerve. The weekly desk roll is mostly one shared market number, so a bad
+  Friday arrives for the whole room at once; roll each desk independently and
+  five traders average into a flat line, which defeats the point. The roster and
+  the meet screen show the swing as a word, so it can be priced before it is
+  bought.
 - Candidate stats are never shown exactly. `HS.readCandidate` blurs them into a
   band whose width comes from skill and reputation, and a losing week on the
   desks sets `known` and reveals the truth.
