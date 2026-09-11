@@ -66,6 +66,7 @@ mapping and press a button. The game notices and says so.
 | Pad | Walking the city | A list of choices | In a session |
 | --- | --- | --- | --- |
 | Left stick | Walk, rim to sprint | Move the cursor | Pick a rung |
+| Right stick | Pointer | Pointer | Pointer |
 | `R2` | Sprint | | Chain or book |
 | D-pad | | Move the cursor | Up and down the chain |
 | D-pad left/right | | Move the cursor | Call or put |
@@ -79,6 +80,12 @@ mapping and press a button. The game notices and says so.
 
 Anywhere the game asks you to choose something the pad puts a gold cursor on
 the list. A session has no cursor, because every action there has a button.
+
+The **right stick is a pointer**: push it and a gold ring appears that clicks
+anything with Cross, the way a mouse would, and fades a couple of seconds after
+you stop. It is the easy way through the two screens a list cursor was never
+the right shape for, the perk trees and the option chain. Turn it off under
+POINTER in the pause menu; the choice is remembered.
 
 ## Trading
 

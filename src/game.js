@@ -70,6 +70,21 @@ HS.Game = function(){
     $('btnResume').addEventListener('click', () => { HS.Audio.click(); closeMenu(); });
     $('btnSaveQuit').addEventListener('click', () => { HS.save(G.S); ui.toast('Saved.', 'good'); closeMenu(); });
     $('btnHelp').addEventListener('click', () => $('help').classList.add('show'));
+    /* Only worth showing to somebody holding a pad. */
+    const pointerLabel = () => {
+      const b = $('btnPointer');
+      if(!pad){ b.style.display = 'none'; return; }
+      b.style.display = '';
+      b.textContent = 'POINTER: ' + (pad.pointerOn() ? 'ON' : 'OFF');
+    };
+    $('btnPointer').addEventListener('click', () => {
+      if(pad) pad.togglePointer();
+      pointerLabel();
+      ui.toast(pad && pad.pointerOn()
+        ? 'Right stick moves a pointer.' : 'Pointer off.', 'good');
+    });
+    G.syncPointerLabel = pointerLabel;
+    pointerLabel();
     $('btnCareer').addEventListener('click', () => { HS.Audio.click(); showCareer(); });
     $('btnPerksMenu').addEventListener('click', () => { HS.Audio.click(); closeMenu(); G.openPerks(); });
     $('helpClose').addEventListener('click', () => $('help').classList.remove('show'));
@@ -260,7 +275,8 @@ HS.Game = function(){
   function togglePause(){
     if(!started) return;
     if(menuOpen()) closeMenu();
-    else { $('menu').classList.add('show'); $('menuStats').innerHTML = statLines(); paused = true; }
+    else { $('menu').classList.add('show'); $('menuStats').innerHTML = statLines();
+           if(G.syncPointerLabel) G.syncPointerLabel(); paused = true; }
   }
   function closeMenu(){ $('menu').classList.remove('show'); paused = false; }
   G.setPaused = v => { paused = v; };

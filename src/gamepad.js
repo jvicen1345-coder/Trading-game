@@ -22,10 +22,77 @@ const B = { cross:0, circle:1, square:2, triangle:3,
 const DEAD = 0.24;          // stick slop
 const REPEAT_FIRST = 380;   // ms before a held direction repeats
 const REPEAT_NEXT = 130;
+const POINT_SPEED = 980;    // px a second at full deflection
+const POINT_IDLE = 2600;    // ms before an unused pointer fades out
+const PREF = 'marketmaker_pad_pointer';
 
 HS.Pad = function(game, input){
   const P = {};
   let prev = [], connected = false, since = {}, cursor = -1, lastList = '';
+
+  /* ---------------- the pointer ----------------
+     The left stick walks and the right stick points, so the two never argue
+     and the pointer is simply there in every moment you are not walking. It
+     shows itself when you move it and fades when you stop, which means a
+     player who never touches the right stick never sees it.
+
+     It earns its place on the screens the list cursor was the wrong shape
+     for: the perk trees are a graph rather than a list, and the option chain
+     is five rungs by two sides. Everything this game can click is a button,
+     so the pointer can reach all of it. */
+  let px = 0, py = 0, pointAt = 0, lastPoll = 0, hot = null, wasLive = false;
+  let pointerOn = true;
+  try { pointerOn = localStorage.getItem(PREF) !== 'off'; } catch(e){}
+
+  const dot = () => HS.$('gpPointer');
+  const live = () => pointerOn && connected && performance.now() - pointAt < POINT_IDLE;
+
+  function unhot(){
+    if(hot){ hot.classList.remove('gp-hot'); hot = null; }
+  }
+
+  function hidePointer(){
+    pointAt = 0; unhot();
+    const d = dot(); if(d) d.classList.remove('show');
+  }
+
+  /* Where the pointer is, what is under it, and whether it is worth showing. */
+  function movePointer(g, now){
+    const dt = Math.min(0.05, (now - (lastPoll || now)) / 1000);
+    const rx = g.axes[2] || 0, ry = g.axes[3] || 0;
+    const mag = Math.hypot(rx, ry);
+    if(pointerOn && mag > DEAD){
+      if(!pointAt){ px = window.innerWidth / 2; py = window.innerHeight / 2; }
+      /* squared response, so small pushes are precise and a full push is fast */
+      const k = POINT_SPEED * dt * mag;
+      px = HS.clamp(px + (rx / mag) * k, 2, window.innerWidth - 2);
+      py = HS.clamp(py + (ry / mag) * k, 2, window.innerHeight - 2);
+      pointAt = now;
+    }
+    const d = dot();
+    if(!d) return;
+    if(!live()){ if(d.classList.contains('show')) hidePointer(); return; }
+    d.style.left = px + 'px';
+    d.style.top = py + 'px';
+    d.classList.add('show');
+    const under = document.elementFromPoint(px, py);
+    const btn = under && under.closest ? under.closest('button') : null;
+    const ok = btn && !btn.disabled && !btn.classList.contains('locked') &&
+               btn.offsetParent !== null && btn.id !== 'gpPointer';
+    if(ok !== !!hot || (ok && btn !== hot)){
+      unhot();
+      if(ok){ hot = btn; hot.classList.add('gp-hot'); HS.Audio.click(); }
+    }
+  }
+
+  /* The option is a button in the pause menu, and it remembers. */
+  P.pointerOn = () => pointerOn;
+  P.togglePointer = function(){
+    pointerOn = !pointerOn;
+    try { localStorage.setItem(PREF, pointerOn ? 'on' : 'off'); } catch(e){}
+    if(!pointerOn) hidePointer();
+    return pointerOn;
+  };
 
   function pads(){
     const list = navigator.getGamepads ? navigator.getGamepads() : [];
@@ -102,7 +169,7 @@ HS.Pad = function(game, input){
   P.poll = function(){
     const g = pads();
     if(!g){
-      if(connected){ connected = false; document.body.classList.remove('pad'); }
+      if(connected){ connected = false; document.body.classList.remove('pad'); hidePointer(); }
       return;
     }
     if(!connected){
@@ -114,7 +181,10 @@ HS.Pad = function(game, input){
     const card = HS.$('mkBreak').classList.contains('show');
     const market = HS.$('market').classList.contains('show') && !card;
     const list = market ? null : listOf();
-    if(list && list.id !== lastList){ lastList = list.id; cursor = 0; paint(list); }
+    if(list && list.id !== lastList){
+      lastList = list.id; cursor = 0;
+      if(!live()) paint(list);
+    }
     if(!list){ lastList = ''; if(cursor >= 0){ cursor = -1; paint(null); } }
 
     /* ---- walking ---- */
@@ -126,6 +196,27 @@ HS.Pad = function(game, input){
                     held(g, B.r2) || held(g, B.l3) || mag > 0.92);
     } else input.setAxis(0, 0, false);
 
+    movePointer(g, now);
+    /* One highlight at a time. A list cursor sitting on the close button while
+       the pointer hovers something else reads as two selections, and the
+       player cannot tell which one Cross is going to take. */
+    const nowLive = live();
+    if(nowLive !== wasLive){
+      if(nowLive) paint(null);
+      else if(list) paint(list);
+      wasLive = nowLive;
+    }
+    /* Whatever the pointer is over wins Cross. Nothing else needs to know it
+       exists: it just clicks the button, exactly as a mouse would. */
+    if(hot && hit(g, B.cross)){
+      const el = hot;
+      unhot();
+      el.click();
+      prev = g.buttons.map(b => b.pressed);
+      lastPoll = now;
+      return;
+    }
+
     /* ---- a cursor over a list of choices ---- */
     if(list){
       /* Left and right walk the same list as up and down. Most of these are
@@ -133,9 +224,9 @@ HS.Pad = function(game, input){
          D-pad direction the row actually points in should not do nothing. */
       const up = held(g, B.up)   || held(g, B.left)  || ay < -0.55 || ax < -0.55;
       const dn = held(g, B.down) || held(g, B.right) || ay >  0.55 || ax >  0.55;
-      repeat('u', up, now, () => move(list, -1));
-      repeat('d', dn, now, () => move(list, 1));
-      if(hit(g, B.cross)){
+      repeat('u', up, now, () => { hidePointer(); move(list, -1); });
+      repeat('d', dn, now, () => { hidePointer(); move(list, 1); });
+      if(hit(g, B.cross) && !hot){
         const el = list.items[HS.clamp(cursor, 0, list.items.length - 1)];
         if(el) el.click();
       }
@@ -178,6 +269,7 @@ HS.Pad = function(game, input){
     }
 
     prev = g.buttons.map(b => b.pressed);
+    lastPoll = now;
   };
 
   /* CHAIN and BOOK are tabs rather than keys, so the pad clicks them. */

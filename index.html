@@ -423,6 +423,18 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
 .mk-size.over{opacity:.34;text-decoration:line-through;}
 
 /* the gamepad cursor */
+/* The right stick moves this, and it only appears while you are using it, so
+   it is never in the way of somebody who only wants to walk. Everything this
+   game can click is a button, which is why the pointer can reach the perk
+   trees and the option chain that the list cursor was never a good shape for. */
+#gpPointer{display:none;position:fixed;z-index:200;width:20px;height:20px;
+  margin:-10px 0 0 -10px;pointer-events:none;opacity:0;transition:opacity .2s;}
+#gpPointer.show{display:block;opacity:1;}
+#gpPointer::before,#gpPointer::after{content:'';position:absolute;inset:0;border-radius:50%;}
+#gpPointer::before{border:2px solid var(--gold);box-shadow:0 0 10px rgba(232,184,92,.5);}
+#gpPointer::after{inset:7px;background:var(--gold);}
+.gp-hot{outline:2px solid var(--gold) !important;outline-offset:2px;
+  background:rgba(232,184,92,.14) !important;}
 .gp-on{outline:2px solid var(--gold) !important;outline-offset:2px;
   box-shadow:0 0 0 4px rgba(232,184,92,.18) !important;}
 body.pad .act:hover:not(.locked){transform:none;}
@@ -718,6 +730,8 @@ body.pad .act:hover:not(.locked){transform:none;}
   <button class="ibtn" id="interactBtn">ENTER</button>
 </div>
 
+<div id="gpPointer" aria-hidden="true"></div>
+
 <div id="rotate">
   <div class="phone"><div class="scr"></div></div>
   <h2>TURN YOUR PHONE SIDEWAYS</h2>
@@ -755,6 +769,7 @@ body.pad .act:hover:not(.locked){transform:none;}
     <button class="btn ghost" id="btnCareer">CAREER</button>
     <button class="btn ghost" id="btnPerksMenu">PERKS</button>
     <button class="btn ghost" id="btnHelp">CONTROLS</button>
+    <button class="btn ghost" id="btnPointer">POINTER: ON</button>
     <button class="btn ghost" id="btnSaveQuit">SAVE</button>
   </div>
 </div>
@@ -782,6 +797,12 @@ body.pad .act:hover:not(.locked){transform:none;}
       <b>Options</b> is the menu. Anywhere there is a list of choices the pad puts a gold
       cursor on it: <b>D-pad</b> or the stick to move, <b>Cross</b> to take it,
       <b>Circle</b> to leave.</p>
+    <p class="pbody"><b>The right stick is a pointer.</b> Push it and a gold ring appears
+      that clicks anything with <b>Cross</b>, exactly as a mouse would. It fades again a
+      couple of seconds after you stop moving it, so it is never in the way of somebody
+      who only wants to walk. It is the easy way through the perk trees, which are a graph
+      rather than a list, and the option chain, which is five rungs by two sides. Turn it
+      off under <b>POINTER</b> in the pause menu.</p>
     <p class="pbody"><b>In a session</b> the pad has a button for everything, so no cursor:
       <b>D-pad up and down</b> walk the rungs of the chain and <b>left and right</b> switch
       between the call and the put, <b>L1</b> and <b>R1</b> size the trade down and up,
