@@ -162,9 +162,9 @@ HS.RECRUIT_SOURCES = {
    in the same room, so one of them is a door you close.
    ------------------------------------------------------------------ */
 HS.TIERS = {
-  basic: { name:'Green',    train:1.0,  blurb:'Will become whatever you make them.' },
-  sharp: { name:'Seasoned', train:0.45, blurb:'Set in their ways, and not immovable.' },
-  god:   { name:'Untouchable', train:0, blurb:'Will not be changed by you or anyone.' }
+  basic: { name:'Green',    train:1.0,  blurb:'Trainable. Goes whichever way you point them.' },
+  sharp: { name:'Seasoned', train:0.45, blurb:'Set in their ways. Three conversations to shift them.' },
+  god:   { name:'Untouchable', train:0, blurb:'Cannot be taught, and does not need to be.' }
 };
 
 HS.CAST = [

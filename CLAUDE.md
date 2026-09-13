@@ -107,7 +107,16 @@ vendor/         three.js r128, vendored so the game runs offline
   from the top of `rollDay`, and `S.carriedIn` is set in `locations.js` before a
   session so an overnight carry can be told from a day trade. Old saves have no
   `S.jobs`, so everything goes through `HS.jobState` first rather than bumping
-  the save version.
+  the save version. Jobs chain: `next` queues the follow-up and a queued link
+  waits rather than expiring if the player is not ranked for it yet, and `chain`
+  means dropping one link buries the whole thread in `S.jobs.dead`.
+- **Keep player-facing text short.** The game reads as a lot of prose and it was
+  cut deliberately: the controls sheet is a scannable reference rather than
+  paragraphs, the first-session coach cards are the highest-stakes place for a
+  wall of text and are kept under sixty words each, and anything read repeatedly
+  (the training sheet, the meet screen) says the thing once. New copy should
+  match that, not the older longer voice still visible in the one-off story
+  beats.
 - Candidate stats are never shown exactly. `HS.readCandidate` blurs them into a
   band whose width comes from skill and reputation, and a losing week on the
   desks sets `known` and reveals the truth.

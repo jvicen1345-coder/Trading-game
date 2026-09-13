@@ -637,16 +637,12 @@ HS.Game = function(){
             ]) +
           '</div></div>' +
         '<p class="pbody y">' + c.perk + '</p>' +
-        '<p class="pbody dim">' + tier.blurb + ' ' +
-          (c.tier === 'basic' ? 'Train them at the office and they will go whichever way you point them.'
-           : c.tier === 'sharp' ? 'You would have to talk them round before any of it took.'
-           : 'Nothing you say will move them, and they do not need moving.') + '</p>' +
-        (HS.isUnpaid(S) ? '<p class="pbody y">You have no office and no payroll. They would be ' +
-          'coming in on nothing but your word, which costs you nothing and buys you nothing: ' +
-          'a bad week and they are simply not there on Monday. Weeks that go well build trust, ' +
-          'and trust is what makes them cheap to teach.</p>' : '') +
-        (rival && !rivalOn ? '<p class="pbody" style="color:var(--red)">Will not work in the ' +
-          'same building as <b>' + rival.name + '</b>. Take one and the other is gone.</p>' : ''),
+        '<p class="pbody dim">' + tier.blurb + '</p>' +
+        (HS.isUnpaid(S) ? '<p class="pbody y">No office, no wage. They come in on your word ' +
+          'and a bad week loses them. Good weeks build trust, and trust makes teaching ' +
+          'cheap.</p>' : '') +
+        (rival && !rivalOn ? '<p class="pbody" style="color:var(--red)">Will not share a floor ' +
+          'with <b>' + rival.name + '</b>. Take one, lose the other.</p>' : ''),
       actions: acts
     });
   }
@@ -921,17 +917,14 @@ HS.Game = function(){
         ['Trust', Math.round(HS.trustOf(e)) + ' of 100'],
         ['Sessions put in', e.trained || 0]
       ]) +
-      '<p class="pbody dim">Somebody who believes in this takes less out of you to teach. ' +
-      'At ' + Math.round(HS.trustOf(e)) + ' trust a session costs ' +
-      Math.round(HS.trainMult(e) * 100) + '% of the usual.</p>' +
       '<p class="pbody dim">' + (tier.train === 0
-        ? 'You are not going to teach this person anything. That is rather the point of them.'
+        ? 'Untouchable. Nothing you say will move them, which is the point of them.'
         : e.tier === 'sharp'
-          ? (e.talked >= 3
-             ? 'They have decided you are worth listening to, though it still goes in slowly.'
-             : 'They have been doing this a long time and they did not come here for a lesson. ' +
-               'Three proper conversations might change that.')
-          : 'Point them at something and they will go that way.') + '</p>',
+          ? (e.talked >= 3 ? 'Listening now, but it still goes in slowly.'
+                           : 'Not listening yet. Three conversations might fix that.')
+          : 'Point them at something and they go that way.') +
+      ' Sessions cost ' + Math.round(HS.trainMult(e) * 100) + '% at ' +
+      Math.round(HS.trustOf(e)) + ' trust.</p>',
       actions: acts
     });
   };
@@ -969,11 +962,9 @@ HS.Game = function(){
     ui.modal({
       title: won ? 'HE HEARS YOU OUT' : 'HE IS NOT HAVING IT', tone: won ? 'good' : 'bad',
       body:'<p>' + (won
-        ? (done ? 'Something lands. He does not agree with you, exactly, but he stops ' +
-                  'explaining why you are wrong long enough to try it your way.'
-                : 'You get further than last time. He is still doing most of the talking.')
-        : 'You get about four minutes before he starts telling you how it was done properly, ' +
-          'and how long he did it for.') + '</p>' +
+        ? (done ? 'Something lands. He stops explaining why you are wrong.'
+                : 'Further than last time. He is still doing most of the talking.')
+        : 'Four minutes, then he tells you how it was done properly.') + '</p>' +
         '<p class="pbody dim">' + (done ? e.name + ' will take training now.'
           : 'Talked round ' + (e.talked || 0) + ' of 3. Your record and your name are the ' +
             'argument here, and right now they are worth about ' + Math.round(odds * 100) +
@@ -1012,15 +1003,15 @@ HS.Game = function(){
     HS.Audio.levelUp();
     ui.modal({
       title:'A MESSAGE FROM SEOUL',
-      body:'<p>Somebody has been watching every session you have put out, at four in the morning ' +
-           'his time, for months. He finally writes, and the message is nine hundred words long ' +
-           'and mostly about what you are doing wrong.</p>' +
-           '<p><b>Yoon Suk-Yield</b> trades a system nobody here uses. He offers to teach it, ' +
-           'on the condition you stop calling it a strategy.</p>' +
-           '<p class="pbody y">The Blue House reads the tape far better than you can. It also ' +
-           'refuses to let you size into anything, so it will never give your audience a clip.</p>' +
-           '<p class="pbody dim">Work through his notes at home. Below <b>' + HS.BLUE.usable +
-           '</b> you will trade it worse than trading blind.</p>',
+      body:'<p>Somebody has watched every session you have put out, at four in the morning ' +
+           'his time, for months. His first message is nine hundred words on what you are ' +
+           'doing wrong.</p>' +
+           '<p><b>Yoon Suk-Yield</b> will teach you his system if you stop calling it a ' +
+           'strategy.</p>' +
+           '<p class="pbody y">Reads the tape far better than you can. Caps your size, so it ' +
+           'will never give your audience a clip.</p>' +
+           '<p class="pbody dim">Study at home. Below <b>' + HS.BLUE.usable +
+           '</b> it is worse than trading blind.</p>',
       actions:[{ label:'Start reading', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }]
     });
   }
@@ -1094,13 +1085,13 @@ HS.Game = function(){
     HS.Audio.levelUp();
     ui.modal({
       title:'YOU START A CHANNEL', tone:'good',
-      body:'<p>A webcam pointed at the corner of your screen, a name you will regret, and a chat ' +
-           'window that is empty for eleven minutes and then is not.</p>' +
-           '<p class="pbody">Go live before a session and strangers watch you trade. Post the recap ' +
-           'afterwards and some of them start paying. They pay <b>' + HS.money(HS.STREAM.subFee) +
-           '</b> each a week, on the same morning the rent comes out.</p>' +
-           '<p class="pbody dim">They came to watch somebody win. A red day on camera costs you ' +
-           'more followers than a green one earns.</p>',
+      body:'<p>A webcam, a name you will regret, and a chat window empty for eleven minutes ' +
+           'and then not.</p>' +
+           '<p class="pbody">Go live before a session and strangers watch. Post the recap and ' +
+           'some start paying <b>' + HS.money(HS.STREAM.subFee) + '</b> a week each, the ' +
+           'morning the rent comes out.</p>' +
+           '<p class="pbody dim">They came to watch somebody win. A red day on camera costs ' +
+           'more than a green one pays.</p>',
       actions:[{ label:'Go on then', onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } }]
     });
   };
@@ -1203,9 +1194,11 @@ HS.Game = function(){
     HS.Audio.alarm();
     ui.modal({
       title:'A MAN AT THE END OF THE BAR',
-      body:'<p>He does not introduce himself, because he does not have to. Ezra Kade turns his glass a quarter turn and says your last four trades back to you, in order, including the one you lost on.</p>' +
-        '<p>"You are good," he says. "You are also already doing the thing you tell yourself you do not do. I have a floor where nobody pretends."</p>' +
-        '<p class="dim">Take the meeting and the fund is yours to run. Refuse and he will not ask twice.</p>',
+      body:'<p>He does not introduce himself. Ezra Kade turns his glass a quarter turn and says ' +
+        'your last four trades back to you, in order, including the one you lost on.</p>' +
+        '<p>"You are good. You are also already doing the thing you tell yourself you do not ' +
+        'do. I have a floor where nobody pretends."</p>' +
+        '<p class="dim">Take the meeting and the fund is yours. Refuse and he will not ask twice.</p>',
       actions:[
         { label:'Take the meeting', onClick:()=>{ ui.closeModal(); joinFund(); } },
         { label:'Finish your drink and leave', ghost:true, onClick:()=>{

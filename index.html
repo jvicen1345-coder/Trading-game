@@ -456,6 +456,9 @@ svg.cross{width:100%;height:130px;display:block;margin:2px 0 14px;border-radius:
 #gpPointer::before,#gpPointer::after{content:'';position:absolute;inset:0;border-radius:50%;}
 #gpPointer::before{border:2px solid var(--gold);box-shadow:0 0 10px rgba(232,184,92,.5);}
 #gpPointer::after{inset:7px;background:var(--gold);}
+.hgroup{margin:14px 0 5px;font-size:8.5px;letter-spacing:1.6px;color:var(--gold);
+  font-weight:700;}
+.hgroup:first-of-type{margin-top:8px;}
 .gp-hot{outline:2px solid var(--gold) !important;outline-offset:2px;
   background:rgba(232,184,92,.14) !important;}
 .gp-on{outline:2px solid var(--gold) !important;outline-offset:2px;
@@ -801,91 +804,68 @@ body.pad .act:hover:not(.locked){transform:none;}
 <div class="sheet" id="help">
   <div class="card">
     <h2>CONTROLS</h2>
-    <div class="sub">HOW TO MOVE AND WORK</div>
+    <div class="sub">EVERYTHING ON ONE PAGE</div>
+
+    <h4 class="hgroup">OUT IN THE CITY</h4>
     <div class="keys">
-      <kbd>W A S D</kbd><span>Walk the city</span>
-      <kbd>Shift</kbd><span>Sprint (walking and running are free)</span>
-      <kbd>E</kbd><span>Enter the building you are standing at</span>
-      <kbd>Esc</kbd><span>Menu · close a panel</span>
-      <kbd>Tab</kbd><span>Open the full city map, and walk anywhere on it</span>
+      <kbd>W A S D</kbd><span>Walk. Shift to sprint. Both free.</span>
+      <kbd>E</kbd><span>Enter the building you are at</span>
+      <kbd>Tab</kbd><span>Map. Click any place to walk there.</span>
+      <kbd>J</kbd><span>Messages: jobs people want doing</span>
       <kbd>P</kbd><span>Perk trees</span>
-      <kbd>[ ]</kbd><span>Zoom the camera</span>
-      <kbd>J</kbd><span>Messages: work people want doing</span>
-      <kbd>M</kbd><span>Mute</span>
+      <kbd>Esc</kbd><span>Menu, or back out</span>
+      <kbd>[ ] / M</kbd><span>Zoom · mute</span>
     </div>
-    <p class="pbody"><b>A controller works too.</b> Plug in a DualSense, an Xbox pad or
-      anything else that reports the standard mapping, and press a button to wake it up.
-      The <b>left stick</b> walks and pushing it to the rim sprints, or hold <b>R2</b>.
-      Out in the city <b>Cross</b> enters a building, <b>Square</b> opens the perk trees,
-      <b>Triangle</b> the map, <b>Circle</b> backs out of whatever you are in, and
-      <b>Options</b> is the menu. Anywhere there is a list of choices the pad puts a gold
-      cursor on it: <b>D-pad</b> or the stick to move, <b>Cross</b> to take it,
-      <b>Circle</b> to leave.</p>
-    <p class="pbody"><b>The right stick is a pointer.</b> Push it and a gold ring appears
-      that clicks anything with <b>Cross</b>, exactly as a mouse would. It fades again a
-      couple of seconds after you stop moving it, so it is never in the way of somebody
-      who only wants to walk. It is the easy way through the perk trees, which are a graph
-      rather than a list, and the option chain, which is five rungs by two sides. Turn it
-      off under <b>POINTER</b> in the pause menu.</p>
-    <p class="pbody"><b>In a session</b> the pad has a button for everything, so no cursor:
-      <b>D-pad up and down</b> walk the rungs of the chain and <b>left and right</b> switch
-      between the call and the put, <b>L1</b> and <b>R1</b> size the trade down and up,
-      <b>Cross</b> buys, <b>Square</b> sells, <b>Circle</b> closes what you are holding,
-      <b>Triangle</b> changes expiry, <b>R2</b> shows the book you are carrying, and
-      <b>Options</b> leaves the desk. A card that stops the session to explain something
-      takes <b>Cross</b> like any other choice.</p>
-    <p class="pbody"><b>In a trading session</b> the chain is sorted by moneyness, not by
-      strike. <b>ATM</b> is the balanced bet, <b>OTM</b> is cheap and needs a move,
-      <b>DEEP ITM</b> behaves almost like the stock. Pick a call or a put, then
-      <kbd>B</kbd> to buy, <kbd>S</kbd> to sell what you hold, <kbd>Tab</kbd> to change expiry,
-      <kbd>1</kbd>-<kbd>5</kbd> to pick a rung (<kbd>Shift</kbd> for the put), and
-      <kbd>Space</kbd> to close what you are holding, and <kbd>Esc</kbd> to leave the desk.
-      Your first session stops three times
-      to explain itself and then leaves you alone, and a day trader gets one more pause on
-      the first session that is their own money.</p>
-    <p class="pbody"><b>Buying and selling.</b> Every position is opened by <b>buying</b> it,
-      and <b>SELL</b> closes what you are holding. Nothing you do not own is yours to sell.</p>
-    <p class="pbody"><b>Size is a share of your cash</b>, and how large a share is what rank
-      buys you: an intern may put 25% behind one idea, a partner 88%. The figure under
-      <b>SIZE</b> is your limit, and anything above it is struck through. Nothing ever
-      reaches past the cash you have, so a position can only cost you what you put in it.</p>
-    <p class="pbody"><b>You can walk away.</b> <b>LEAVE</b> in the corner of the session,
-      <kbd>Esc</kbd>, or <b>Options</b> on a pad takes you off the desk whenever you like.
-      Anything expiring tonight comes off at the mark, exactly as banking a day does;
-      anything with time left on it rides to the next session. If you are holding
-      something you get asked first.</p>
-    <p class="pbody"><b>If a day goes badly enough</b> the desk takes the book off you, but not
-      on a flinch: the loss has to hold for a few seconds, so a contract that dips and comes
-      straight back will not end your session. You get one warning while there is still time
-      to close out.</p>
-    <p class="pbody"><b>Time is earned.</b> You start on <b>0DTE</b> only, which dies at
-      tonight's bell. Your first promotion on either path unlocks the <b>WEEKLY</b>, which
-      runs to Friday's close, and the second unlocks the <b>SWING</b>, a fortnight of time
-      value with one slot only. Anything still open is in the <b>BOOK</b> tab.</p>
-    <p class="pbody dim">Walking is free. Energy is spent on <b>actions</b>: trading,
-      classes, the gym, working a room. The gym raises your stamina ceiling permanently;
-      the corner store sells it back to you by the can, at a steeply rising price.</p>
-    <p class="pbody"><b>Where you live matters.</b> Monday of week two you are out of the
-      basement whichever path you took, and the only room you can afford has thin walls and
-      an unreliable meter. Cheap places cost you sleep, and sometimes cost you a whole
-      session when the power goes. Moving up the ladder buys quiet and certainty.</p>
-    <p class="pbody"><b>Day traders can start a channel</b> once they are Consistent. Go live
-      before a session and strangers watch you trade; post the recap and some of them start
-      paying, every week, on the morning the rent comes out. A red day in front of an
-      audience costs more followers than a green one earns.</p>
-    <p class="pbody"><b>Then you build a firm.</b> From Funded Trader you can recruit at the
-      bar, off the floor of the Exchange, and out of your own chat. Take a lease, hand the
-      channel to whoever can carry a room, and walk the floor once a week so nobody quits.
-      Ladder &amp; Co. post a number every fortnight: beat them four quarters running to
-      finish, and lose one to start again at nothing.</p>
-    <p class="pbody"><b>Hit your target before three</b> and the session stops to ask what you
-      want. Bank the day, or skip the quiet middle and trade the <b>power hour</b>, which
-      moves harder in both directions.</p>
-    <p class="pbody dim">The market runs 9:30 to 4:00 on weekdays and a session lasts until
-      the bell, so get there early. A week is five sessions and one <b>Weekend</b>, which is
-      when you chart the week ahead, take a class, work a room, or go into the office if you
-      are on the floor. Rent is due once a week. Sleep at home to start
-      the next day.</p>
+
+    <h4 class="hgroup">IN A SESSION</h4>
+    <div class="keys">
+      <kbd>1 to 5</kbd><span>Pick a rung. Shift for the put.</span>
+      <kbd>B / S</kbd><span>Buy · sell what you hold</span>
+      <kbd>Space</kbd><span>Close a position</span>
+      <kbd>Tab</kbd><span>Change expiry</span>
+      <kbd>Esc</kbd><span>Leave the desk</span>
+    </div>
+
+    <h4 class="hgroup">CONTROLLER</h4>
+    <div class="keys">
+      <kbd>Left stick</kbd><span>Walk. Rim or R2 to sprint.</span>
+      <kbd>Right stick</kbd><span>A pointer. Cross clicks. Off under POINTER in the menu.</span>
+      <kbd>Cross</kbd><span>Enter · take a choice · <b>buy</b></span>
+      <kbd>Square</kbd><span>Perks · <b>sell</b></span>
+      <kbd>Circle</kbd><span>Back · <b>close a position</b></span>
+      <kbd>Triangle</kbd><span>Map · <b>expiry</b></span>
+      <kbd>D-pad</kbd><span>Move a cursor · <b>rungs, left and right for puts</b></span>
+      <kbd>L1 R1</kbd><span>Zoom · <b>size</b></span>
+      <kbd>R2</kbd><span>Sprint · <b>the book</b></span>
+      <kbd>L3</kbd><span>Messages</span>
+      <kbd>Options</kbd><span>Menu · <b>leave the desk</b></span>
+    </div>
+
+    <h4 class="hgroup">THE CHAIN</h4>
+    <div class="keys">
+      <kbd>ATM</kbd><span>The balanced bet</span>
+      <kbd>OTM</kbd><span>Cheap, needs a move</span>
+      <kbd>DEEP ITM</kbd><span>Behaves almost like the stock</span>
+      <kbd>0DTE</kbd><span>Dies at tonight's bell. All you have at first.</span>
+      <kbd>WEEKLY</kbd><span>To Friday. First promotion.</span>
+      <kbd>SWING</kbd><span>A fortnight, one slot. Second promotion.</span>
+    </div>
+    <p class="pbody">You open a position by <b>buying</b> it and close it by
+      <b>selling</b>. Size is a share of your cash, capped by rank: 25% as an intern,
+      88% as a partner. Anything over the cap is struck through.</p>
+    <p class="pbody">A bad enough day and the desk takes your book, but only if the loss
+      holds for a few seconds, and you get one warning first. Hit your target before
+      three and you choose: bank it, or trade the <b>power hour</b>.</p>
+
+    <h4 class="hgroup">THE REST</h4>
+    <div class="keys">
+      <kbd>Energy</kbd><span>Spent on actions, not walking. The gym raises the ceiling.</span>
+      <kbd>Week</kbd><span>Five sessions and one Weekend. Rent weekly.</span>
+      <kbd>Market</kbd><span>9:30 to 4:00. Get there early.</span>
+      <kbd>Home</kbd><span>Cheap rooms cost you sleep, sometimes a whole session</span>
+      <kbd>Channel</kbd><span>Day traders, from Consistent. Red days cost more than green pay.</span>
+      <kbd>A firm</kbd><span>From Funded Trader. Beat Ladder &amp; Co. four quarters running.</span>
+    </div>
     <button class="btn" id="helpClose">BACK</button>
   </div>
 </div>

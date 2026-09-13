@@ -143,6 +143,13 @@ reason to trade a particular way rather than a separate minigame. Some of them
 pay in an introduction, which puts somebody on your board you could not
 otherwise reach yet.
 
+**They chain.** Do a job well and the same person comes back with something
+harder, and the last one in a thread is where you find out what they actually
+wanted. Marcus Vell is fronting you to the desk that owns his desk. Harriet
+Doss was never testing your trading. The client who would not give a name is
+Ladder & Co., who turned you down once already. Drop a link and the rest of
+that thread never arrives, so you never get to find out.
+
 ## How a week works
 
 Five sessions and one **Weekend**. Saturday and Sunday are a single day,

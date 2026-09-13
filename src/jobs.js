@@ -45,74 +45,91 @@ HS.JOB_KINDS = {
 /* The work itself. `from` is who is asking, `need` is the number, `days` is
    how long you have, and `pay` is what lands when it is done. Reputation is
    the cost of failing, always, because a job you took and dropped is worse
-   than one you never took. */
+   than one you never took.
+ *
+ * `next` is the one that follows it. People who liked what you did come back
+ * with something harder, and the last link in a chain is where you find out
+ * what they actually wanted. Drop a link and the rest never arrive: `chain`
+ * marks which thread a job belongs to so failing one buries the lot. */
 HS.JOBS = [
-  { id:'firstblood', kind:'green', need:2, days:3, minRank:1,
+  { id:'firstblood', kind:'green', need:2, days:3, minRank:1, chain:'vell', next:'showme',
     from:'Marcus Vell', role:'a floor manager who owes somebody a favour',
-    ask:'Two green sessions in three days. Nothing clever, just do not lose.',
+    ask:'Two green sessions in three days. Do not lose.',
     pay:{ cash:2200, rep:3 } },
 
-  { id:'showme', kind:'target', need:2, days:4, minRank:1,
-    from:'Marcus Vell', role:'a floor manager who owes somebody a favour',
-    ask:'Hit your number twice this week. I want to put your name in front of ' +
-        'somebody and I would rather not look stupid.',
+  { id:'showme', kind:'target', need:2, days:4, minRank:1, chain:'vell', next:'vellsfriend',
+    from:'Marcus Vell', role:'and now he wants to show you off',
+    ask:'Hit your number twice. I am putting your name in front of somebody.',
     pay:{ cash:4000, rep:5 } },
 
-  { id:'tidy', kind:'clean', need:3, days:5, minRank:2,
-    from:'Harriet Doss', role:'compliance, and she is watching anyway',
-    ask:'Three sessions, none of them red. One bad day and this conversation ' +
-        'never happened.',
+  { id:'vellsfriend', kind:'single', need:22000, days:4, minRank:2, chain:'vell',
+    from:'Marcus Vell', role:'the favour was never his to owe',
+    ask:'The somebody is the desk that owns my desk. Twenty two in one session ' +
+        'and they buy your year. Miss it and I am the one who looks stupid.',
+    pay:{ cash:30000, rep:11, perk:1 } },
+
+  { id:'tidy', kind:'clean', need:3, days:5, minRank:2, chain:'doss', next:'dossfile',
+    from:'Harriet Doss', role:'compliance, watching anyway',
+    ask:'Three sessions, none red. One bad day and we never spoke.',
     pay:{ cash:6500, rep:7, skill:2 } },
 
+  { id:'dossfile', kind:'clean', need:4, days:7, minRank:3, chain:'doss',
+    from:'Harriet Doss', role:'she was never testing your trading',
+    ask:'Four more, clean. I am building a file on the floor above you and I ' +
+        'need somebody on it whose book I can hold up.',
+    pay:{ cash:19000, rep:12, skill:3 } },
+
   { id:'clientbook', kind:'single', need:12000, days:4, minRank:2,
+    chain:'client', next:'bigday',
     from:'a client who will not give a name', role:'money that wants a number',
-    ask:'Twelve thousand in a single session. I do not care which way the ' +
-        'tape goes, I care that you can do it on demand.',
+    ask:'Twelve thousand in one session. On demand, not by luck.',
     pay:{ cash:9000, rep:4 } },
 
   { id:'overnight', kind:'carry', need:2, days:6, minRank:3,
     from:'Winston Churnwell', role:'before you ever met him',
-    ask:'Anybody can scalp. Carry something through a night, twice, and close ' +
-        'it up. Then we can talk.',
+    ask:'Anybody can scalp. Carry something overnight twice and close it up.',
     pay:{ cash:11000, rep:6, meet:'churnwell' } },
 
   { id:'grind', kind:'total', need:40000, days:6, minRank:3,
     from:'Ladder & Co.', role:'the firm that did not want you',
-    ask:'Forty thousand inside a week. We are told you cannot. We would like ' +
-        'to be able to say we asked.',
+    ask:'Forty thousand inside a week. We are told you cannot.',
     pay:{ cash:15000, rep:9 } },
 
   { id:'nameknown', kind:'rep', need:45, days:8, minRank:2,
     from:'Nancy Pelosini', role:'before she works for you',
-    ask:'Get your name to mean something. Forty five and people take the call.',
+    ask:'Get to forty five reputation. Then people take the call.',
     pay:{ cash:5000, skill:3, meet:'pelosini' } },
 
   { id:'audience', kind:'follow', need:12000, days:8, minRank:2, path:'solo',
     from:'Justin Trudough', role:'somebody who wants to front your channel',
-    ask:'Twelve thousand following you and the channel is worth somebody ' +
-        'running. I am somebody.',
+    ask:'Twelve thousand following you and the channel is worth running.',
     pay:{ cash:6000, rep:5, meet:'trudough' } },
 
   { id:'steadyhand', kind:'clean', need:5, days:8, minRank:4,
     from:'Gordon Brownout', role:'risk, at a bank that no longer exists',
-    ask:'Five sessions without a red one. Not luck. Method.',
+    ask:'Five sessions without a red one. Method, not luck.',
     pay:{ cash:26000, rep:10, perk:1, meet:'brownout' } },
 
   { id:'bigday', kind:'single', need:60000, days:5, minRank:4,
-    from:'a desk that clears for three funds', role:'they saw the tape',
-    ask:'Sixty thousand in one session. Once. We want to see the shape of it.',
+    chain:'client', next:'thename',
+    from:'a desk that clears for three funds', role:'the client, less anonymous',
+    ask:'Sixty thousand in one session. We want to see the shape of it.',
     pay:{ cash:42000, rep:12 } },
+
+  { id:'thename', kind:'total', need:180000, days:8, minRank:4, chain:'client',
+    from:'Ladder & Co.', role:'the client, all along',
+    ask:'You have been trading for us for a month. Now do it with our name on ' +
+        'it: a hundred and eighty in eight days, and we stop pretending.',
+    pay:{ cash:150000, rep:18, perk:1 } },
 
   { id:'quarter', kind:'total', need:250000, days:10, minRank:5,
     from:'Margaret Hatcher', role:'profitable at both firms that asked her to leave',
-    ask:'A quarter of a million in ten days. I am not interested in people who ' +
-        'need longer than that.',
+    ask:'A quarter of a million in ten days. No longer.',
     pay:{ cash:90000, rep:14, perk:1, meet:'hatcher' } },
 
   { id:'thelot', kind:'target', need:6, days:10, minRank:5,
     from:'Chester Arbitrage', role:'nobody knows where he was before this',
-    ask:'Six days on your number inside ten. Do that and I will come and find ' +
-        'you.',
+    ask:'Six days on your number inside ten, and I come and find you.',
     pay:{ cash:120000, rep:16, meet:'arbitrage' } }
 ];
 
@@ -124,6 +141,7 @@ HS.jobState = function(S){
   if(!S.jobs) S.jobs = { active:[], offer:null, done:[], failed:0, cooldown:0 };
   if(!S.jobs.done) S.jobs.done = [];
   if(!S.jobs.active) S.jobs.active = [];
+  if(!S.jobs.dead) S.jobs.dead = [];      /* threads you dropped a link of */
   return S.jobs;
 };
 
@@ -145,13 +163,31 @@ HS.jobOffer = function(S){
   if(js.offer || js.active.length >= HS.JOB_SLOTS || js.cooldown > 0) return null;
   const chance = HS.JOB_OFFER_CHANCE * (0.55 + Math.min(1, S.rep / 70));
   if(Math.random() > chance) return null;
-  const pool = HS.JOBS.filter(t =>
+  const can = t =>
     (t.minRank == null || S.rank >= t.minRank) &&
     (!t.path || t.path === S.path) &&
     !HS.jobDone(S, t.id) &&
-    !js.active.some(a => a.id === t.id));
+    !(t.chain && js.dead.indexOf(t.chain) >= 0) &&
+    !js.active.some(a => a.id === t.id);
+
+  /* Whoever you just finished for comes back first, if you are ready for what
+     they want next. If you are not, they wait rather than going away. */
+  if(js.queued){
+    const q = HS.jobTemplate(js.queued);
+    if(!q || HS.jobDone(S, js.queued) ||
+       (q.chain && js.dead.indexOf(q.chain) >= 0)) js.queued = null;
+    else if(can(q)){ js.queued = null; js.offer = { id:q.id, day:S.day }; return q; }
+    else return null;
+  }
+  /* A thread already running beats a stranger, so a chain does not get lost
+     behind one off work the player happens to be offered first. */
+  const pool = HS.JOBS.filter(can);
   if(!pool.length) return null;
-  const t = pool[Math.floor(Math.random() * pool.length)];
+  const linked = pool.filter(t => t.chain && js.done.some(d => {
+    const p = HS.jobTemplate(d); return p && p.chain === t.chain;
+  }));
+  const from = linked.length ? linked : pool;
+  const t = from[Math.floor(Math.random() * from.length)];
   js.offer = { id:t.id, day:S.day };
   return t;
 };
@@ -201,6 +237,13 @@ function finish(S, js, j, ev){
   js.active = js.active.filter(a => a !== j);
   js.done = js.done.concat([j.id]);
   if(t) payOut(S, t, ev);
+  /* They liked it, so they come back with something harder. */
+  if(t && t.next && !HS.jobDone(S, t.next)){
+    js.queued = t.next;
+    js.cooldown = 1;
+    const nx = HS.jobTemplate(t.next);
+    if(nx) ev.push({ kind:'', text: nx.from + ' is not finished with you.' });
+  }
 }
 
 function drop(S, js, j, ev, why){
@@ -208,6 +251,10 @@ function drop(S, js, j, ev, why){
   js.active = js.active.filter(a => a !== j);
   js.failed = (js.failed || 0) + 1;
   S.rep = HS.clamp(S.rep - 5, 0, 100);
+  /* Drop a link and the rest of that thread never arrives. Whatever they were
+     working up to, you do not get to find out. */
+  if(t && t.chain && js.dead.indexOf(t.chain) < 0) js.dead = js.dead.concat([t.chain]);
+  if(js.queued === (t && t.next)) js.queued = null;
   ev.push({ kind:'bad', text:(t ? t.from : 'Somebody') + ' will not be asking again. ' + why });
 }
 

@@ -694,28 +694,24 @@ HS.Market.run = function(opts, done){
 
   function coachOpen(){
     coach('THE CHAIN',
-      'Calls on the left, puts on the right, and the rungs between them are how far ' +
-      'from the money each contract sits. <b>ATM</b> is the balanced bet. ' +
-      '<b>OTM</b> is cheap and needs a real move to pay.' +
-      '<br><br>Pick one, then <b>B</b> to buy it. Your supervisor said a cheap call. ' +
-      'She did not say what happens next.',
+      'Calls left, puts right. The rungs are how far from the money each one sits: ' +
+      '<b>ATM</b> is the balanced bet, <b>OTM</b> is cheap and needs a real move.' +
+      '<br><br>Pick one and press <b>B</b>. She said a cheap call. She did not say ' +
+      'what happens next.',
       'Show me the chain');
   }
   function coachBought(){
     coach('YOU ARE LONG',
-      'That is a <b>0DTE</b>. It expires at tonight\'s bell and it is losing value every ' +
-      'minute it sits there, whether the price moves or not. That bleed is <b>theta</b>, ' +
-      'and it is the whole reason most first days end red.' +
-      '<br><br>You do not have to hold it. <b>Space</b>, or the <b>SELL</b> button, closes ' +
-      'your position at the current price, and the money is yours the moment you do.',
+      'A <b>0DTE</b> dies at tonight\'s bell and bleeds value every minute either way. ' +
+      'That bleed is <b>theta</b>, and it is why most first days end red.' +
+      '<br><br><b>Space</b> or <b>SELL</b> closes it at the current price.',
       'Understood');
   }
   function coachLate(){
     coach('THE BELL IS COMING',
-      'You are still holding it. At four o\'clock this contract settles at whatever it is ' +
-      'actually worth, and an out-of-the-money one is worth nothing at all.' +
-      '<br><br>Close it with <b>space</b>, or hold and find out. Either way the rest of the ' +
-      'day is yours: no more interruptions.',
+      'At four it settles at what it is actually worth, and out of the money is worth ' +
+      'nothing.' +
+      '<br><br>Close it with <b>space</b> or hold and find out. No more interruptions.',
       'Leave me to it');
   }
 
@@ -724,14 +720,10 @@ HS.Market.run = function(opts, done){
      nothing else in the game marks the moment it stops. */
   function coachSolo(){
     coach('YOUR ACCOUNT NOW',
-      'No commute, no supervisor, and nobody putting a hundred and twenty dollars in your ' +
-      'hand at four o\'clock whatever you did with the morning. The wage line reads zero ' +
-      'from here on.' +
-      '<br><br>The number in the corner is your own money. It pays the rent, it buys the ' +
-      'next contract, and there is nothing underneath it.' +
-      '<br><br>They will still pull you at ' + Math.round(HS.bustFloor(G) * 100) + '%, and ' +
-      'that is no longer a firm protecting its own book. It is the only thing between you ' +
-      'and picking up shifts again.',
+      'No wage at four o\'clock any more. The number in the corner is your own money: it ' +
+      'pays the rent, buys the next contract, and there is nothing underneath it.' +
+      '<br><br>You still get pulled at ' + Math.round(HS.bustFloor(G) * 100) + '%. That is ' +
+      'now the only thing between you and picking up shifts again.',
       'It is mine to lose');
   }
 
@@ -740,11 +732,10 @@ HS.Market.run = function(opts, done){
   function warnCard(floor, eq){
     HS.Audio.loss();
     coach('THE DESK IS WATCHING',
-      'You are down <b>' + HS.money(cfg.startEquity - eq) + '</b> on the day, which is ' +
-      Math.round((1 - eq / cfg.startEquity) * 100) + '% of what you started with.' +
-      '<br><br>They take the book off you at <b>' + HS.money(floor) + '</b>. You can close ' +
-      'what you are holding with <b>space</b> and keep the rest, or you can sit in it.' +
-      '<br><br>Nobody will mention this again today.',
+      'Down <b>' + HS.money(cfg.startEquity - eq) + '</b>, or ' +
+      Math.round((1 - eq / cfg.startEquity) * 100) + '% of what you started with. They take ' +
+      'the book at <b>' + HS.money(floor) + '</b>.' +
+      '<br><br><b>Space</b> closes what you hold. Nobody mentions this again today.',
       'Understood');
   }
 
