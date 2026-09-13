@@ -762,19 +762,36 @@ HS.Market.run = function(opts, done){
     $('mkBreakTitle').textContent = 'TARGET HIT';
     $('mkBreakNum').textContent = HS.signed(made);
     $('mkBreakNum').className = 'num ' + (made >= 0 ? 'g' : 'r');
+    const open = G.positions.length;
     $('mkBreakText').innerHTML =
       'You are done for the day at ' + HS.clockStr(marketHour()) + ', and the middle of the ' +
-      'session is nothing but chop.' +
-      (G.positions.length
-        ? '<br><br><b class="y">' + G.positions.length + ' contract' + (G.positions.length===1?'':'s') +
-          ' still open.</b> Anything you leave on rides the afternoon without you.'
-        : '') +
-      '<br><br>The last hour is where the volume comes back.';
+      'session is nothing but chop. The last hour is where the volume comes back.' +
+      (open
+        ? '<br><br><b class="y">' + open + ' contract' + (open === 1 ? '' : 's') +
+          ' still open.</b> Skipping the afternoon means it moves without you and you ' +
+          'cannot touch it until three. Take it off at the mark first, or leave it on and ' +
+          'find out.'
+        : '');
+    /* Skipping the chop runs hours of tape in one go. Doing that to a book the
+       player is still holding, with no way to touch it, is not a decision they
+       made: it just happens to them. So carrying it through is its own button,
+       and the safe one is the default. */
+    $('mkBreakGo').textContent = open ? 'FLATTEN AND TRADE IT' : 'TRADE THE POWER HOUR';
+    $('mkBreakAlt').style.display = open ? '' : 'none';
     $('mkBreak').classList.add('show');
   }
 
-  function skipToPowerHour(){
+  function skipToPowerHour(ride){
     $('mkBreak').classList.remove('show');
+    $('mkBreakAlt').style.display = 'none';
+    /* Unless they chose to carry it, the book comes off at the mark before the
+       clock moves, so nobody watches hours of tape happen to a position they
+       are not allowed to touch. */
+    let carried = 0;
+    if(!ride) G.positions.slice().forEach(p => closeById(p.id, true));
+    else carried = G.positions.length;
+    const before = equity();
+
     const target = Math.floor(TICKS * POWER_PROG);
     let rough = false;
     while(M.tick < target){
@@ -785,9 +802,14 @@ HS.Market.run = function(opts, done){
     }
     M.power = true;
     updateChain(); renderBook(); draw(); sync();
+    const moved = Math.round(equity() - before);
     countdown(3, () => {
       M.running = true; M.last = performance.now(); M.acc = 0;
-      flash(rough ? 'You come back to a mess.' : 'Power hour. Size comes back in.');
+      /* Say what the afternoon did to what they left on. Coming back to a
+         different number with no account of it is the thing that stings. */
+      flash(carried
+        ? 'The afternoon moved what you left on by ' + HS.signed(moved) + '.'
+        : rough ? 'You come back to a mess.' : 'Power hour. Size comes back in.');
       requestAnimationFrame(frame);
     });
   }
@@ -895,12 +917,14 @@ HS.Market.run = function(opts, done){
     $('mkBreak').classList.remove('show'); finish('target');
   };
 
-  const onPower = () => { if(coachThen) coachDone(); else skipToPowerHour(); };
+  const onPower = () => { if(coachThen) coachDone(); else skipToPowerHour(false); };
+  const onRide  = () => skipToPowerHour(true);
 
   $('mkBuy').addEventListener('click', onBuy);
   $('mkSell').addEventListener('click', onSell);
   $('mkBreakGo').addEventListener('click', onPower);
   $('mkBreakStop').addEventListener('click', onStay);
+  $('mkBreakAlt').addEventListener('click', onRide);
   $('mkLeave').addEventListener('click', onLeave);
   document.querySelectorAll('#mkQty .mk-size').forEach(b => b.addEventListener('click', onQty));
   window.addEventListener('keydown', onKey, true);
@@ -909,6 +933,8 @@ HS.Market.run = function(opts, done){
     $('mkSell').removeEventListener('click', onSell);
     $('mkBreakGo').removeEventListener('click', onPower);
     $('mkBreakStop').removeEventListener('click', onStay);
+    $('mkBreakAlt').removeEventListener('click', onRide);
+    $('mkBreakAlt').style.display = 'none';
     $('mkLeave').removeEventListener('click', onLeave);
     $('mkBreak').classList.remove('show');
     $('mkBreakStop').textContent = 'BANK THE DAY';
