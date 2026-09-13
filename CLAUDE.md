@@ -34,6 +34,7 @@ src/market.js   the trading session
 src/state.js    stats, clock, economy, career ladders, save/load
 src/locations.js what each building offers
 src/game.js     main loop, consequences, endings
+src/jobs.js     work that arrives, expires and pays
 src/perks.js    the three perk constellations
 src/room.js     your room and its furniture
 src/city.js     procedural city, street props, traffic
@@ -98,6 +99,15 @@ vendor/         three.js r128, vendored so the game runs offline
   five traders average into a flat line, which defeats the point. The roster and
   the meet screen show the swing as a word, so it can be priced before it is
   bought.
+- Jobs in `jobs.js` are the only thing in the game with a deadline on it besides
+  the daily target, which is what they are for: the game had plenty of verbs and
+  nothing to want. Every goal is read off the session result or state the game
+  already keeps, so a job never needs its own systems. `HS.jobsAfterSession`
+  advances the session kinds, `HS.jobsDaily` runs standing kinds and deadlines
+  from the top of `rollDay`, and `S.carriedIn` is set in `locations.js` before a
+  session so an overnight carry can be told from a day trade. Old saves have no
+  `S.jobs`, so everything goes through `HS.jobState` first rather than bumping
+  the save version.
 - Candidate stats are never shown exactly. `HS.readCandidate` blurs them into a
   band whose width comes from skill and reputation, and a losing week on the
   desks sets `known` and reveals the truth.

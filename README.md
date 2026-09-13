@@ -36,6 +36,7 @@ Everything including three.js is vendored in this folder.
 | `P` | Perk trees |
 | `Esc` | Menu, or close a panel |
 | `[` `]` | Zoom the camera |
+| `J` | Messages: work people want doing |
 | `M` | Mute |
 
 In a trading session: `B` buy, `S` sell, `Space` close what you are holding,
@@ -47,6 +48,10 @@ Every position is opened by **buying** it, and **SELL** closes what you are
 holding. Nothing you do not own is yours to sell.
 
 ### On a phone
+
+The full map (`Tab`) is also how you travel: every place on it is a button that
+walks you there and charges the minutes the walk would have taken. Most of a run
+used to be the same four streets.
 
 Touch devices get a virtual stick and an ENTER button, and the game is played
 **in landscape**. A top-down city in a tall thin window shows you almost
@@ -68,6 +73,7 @@ mapping and press a button. The game notices and says so.
 | Left stick | Walk, rim to sprint | Move the cursor | Pick a rung |
 | Right stick | Pointer | Pointer | Pointer |
 | `R2` | Sprint | | Chain or book |
+| `L3` | Messages | | |
 | D-pad | | Move the cursor | Up and down the chain |
 | D-pad left/right | | Move the cursor | Call or put |
 | Cross | Enter a building | Take the choice | Buy |
@@ -123,6 +129,19 @@ you want to do about it. Bank the day and it is yours, or sit out the quiet
 middle and come back for the **power hour**, which runs hotter than the rest of
 the day in both directions. Anything you leave open rides the afternoon without
 you.
+
+## Work people want doing
+
+Press `J` for messages. Somebody turns up with a job: two green sessions in
+three days, sixty thousand in one session, five sessions without a red one. You
+can carry two at a time, an offer sits there for three days before they ask
+somebody else, and taking one on and missing the date costs you reputation.
+That last part is the point. A job you can ignore for free is not a job.
+
+The goals are all measured off things the game already tracks, so a job is a
+reason to trade a particular way rather than a separate minigame. Some of them
+pay in an introduction, which puts somebody on your board you could not
+otherwise reach yet.
 
 ## How a week works
 

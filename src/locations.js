@@ -73,6 +73,9 @@ HS.Locations = function(game){
     const shape = sessionShape(s);
     ui().closePanel();
     game.setPaused(true);
+    /* What you walked in holding, so a job that asks you to carry something
+       overnight can tell the difference between that and a day trade. */
+    s.carriedIn = (s.positions || []).length;
     HS.Market.run({
       state: s,
       symbol: HS.weekTicker(s.day),

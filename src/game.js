@@ -266,6 +266,7 @@ HS.Game = function(){
       return true;
     }
     if(k === 'h'){ $('help').classList.toggle('show'); return true; }
+    if(k === 'j'){ if(!ui.isModalOpen()) G.openPhone(); return true; }
     if(k === '['){ world.setZoom(world.getZoom() * 1.12); return true; }
     if(k === ']'){ world.setZoom(world.getZoom() / 1.12); return true; }
     return false;
@@ -464,6 +465,11 @@ HS.Game = function(){
     S.cash += salary;
     if(res.pnl > S.stats.bestDay) S.stats.bestDay = res.pnl;
     S.weekPnl = S.cash - S.weekStartCash;
+    /* Whatever anybody is waiting on, this is where it moves. */
+    const jobEv = [];
+    res.carriedIn = S.carriedIn || 0;
+    HS.jobsAfterSession(S, res, jobEv);
+    jobEv.forEach(e => ui.toast(e.text, e.kind || 'good'));
 
     let repDelta = res.hitTarget ? 2.8 + S.rank * 0.3 : res.pnl > 0 ? 1.0 : res.busted ? -4 : -1.2;
     // Trading alone still builds a record; funders and prop desks read it.
@@ -721,6 +727,69 @@ HS.Game = function(){
       '</span>' +
     '</button>';
   }
+
+  /* ================= the phone =================
+     Where work arrives. An offer sits here for three days and then the person
+     asking goes and finds somebody else, which is the whole reason to look. */
+  G.openPhone = function(){
+    const S = G.S;
+    const js = HS.jobState(S);
+    const acts = [];
+    const rows = [];
+
+    HS.jobsOf(S).forEach(j => {
+      const t = HS.jobTemplate(j.id), pr = HS.jobProgress(S, j);
+      const left = j.due - S.day;
+      rows.push('<div class="job' + (left <= 1 ? ' due' : '') + '">' +
+        '<b>' + (t ? t.from : 'Somebody') + '</b>' +
+        '<span class="j-ask">' + (t ? t.ask : '') + '</span>' +
+        '<span class="j-prog"><span class="j-bar"><span style="width:' +
+          Math.round(HS.clamp(pr.at / pr.need, 0, 1) * 100) + '%"></span></span>' +
+        pr.text + '</span>' +
+        '<span class="j-due">' + (left <= 0 ? 'DUE TODAY' :
+          left === 1 ? 'ONE DAY LEFT' : left + ' DAYS LEFT') + '</span></div>');
+    });
+
+    const offer = js.offer && HS.jobTemplate(js.offer.id);
+    if(offer){
+      const p = offer.pay || {};
+      const bits = [];
+      if(p.cash) bits.push(HS.money(p.cash));
+      if(p.rep) bits.push('+' + p.rep + ' rep');
+      if(p.skill) bits.push('+' + p.skill + ' skill');
+      if(p.perk) bits.push(p.perk + ' perk point');
+      if(p.meet) bits.push('an introduction');
+      const full = HS.jobsOf(S).length >= HS.JOB_SLOTS;
+      acts.push({ label:'Take it on', detail: offer.ask,
+        cost: bits.join(' · ') + ' · ' + offer.days + ' days',
+        disabled: full, why:'You are already carrying two',
+        onClick:()=>{ HS.jobAccept(S, offer.id); ui.closeModal();
+          ui.toast('You said yes to ' + offer.from + '.', 'good');
+          ui.syncHud(); HS.save(S); } });
+      acts.push({ label:'Not this time', detail:'They ask somebody else', tone:'red',
+        onClick:()=>{ HS.jobDecline(S); ui.closeModal(); ui.syncHud(); HS.save(S); } });
+    }
+    acts.push({ label:'Put it away',
+      onClick:()=>{ ui.closeModal(); ui.syncHud(); HS.save(S); } });
+
+    ui.modal({
+      title:'MESSAGES',
+      sub: HS.jobsOf(S).length + ' of ' + HS.JOB_SLOTS + ' taken on' +
+           (js.done.length ? ' · ' + js.done.length + ' finished' : '') +
+           (js.failed ? ' · ' + js.failed + ' dropped' : ''),
+      /* Not wide: a list of jobs is a column of text, and staying narrow lets a
+         landscape phone put the work on the left and the answer on the right. */
+      /* What you are already carrying first, then whoever is on the line now,
+         so the offer sits next to the buttons that answer it. */
+      body: (rows.length ? '<div class="jobs">' + rows.join('') + '</div>'
+                         : '<p class="pbody dim">Nothing on. Somebody will want ' +
+                           'something soon enough, and the better your name the ' +
+                           'sooner that is.</p>') +
+            (offer ? '<p class="pbody" style="margin-top:12px"><b>' + offer.from +
+               '</b> <span class="dim">' + offer.role + '</span> is asking.</p>' : ''),
+      actions: acts
+    });
+  };
 
   /* The roster. Who trades, who fronts the channel, and who is dead weight. */
   G.openRoster = function(){
@@ -1696,8 +1765,16 @@ HS.Game = function(){
       ctx.font = '600 11px "Space Grotesk",sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'top';
       ctx.fillText(lm.name, x, y + 11);
-      legend.appendChild(HS.el('div', isT ? 'obj' : '',
-        '<i style="background:' + col + '"></i>' + lm.name + (isT ? ' (go here)' : '')));
+      /* The legend is also how you get there. Most of a run was walking the
+         same four streets, which is time spent on nothing: the map now takes
+         you, and charges the minutes the walk would have cost anyway. */
+      const mins = travelMinutes(lm);
+      const row = HS.el('button', 'map-go' + (isT ? ' obj' : ''),
+        '<i style="background:' + col + '"></i><span>' + lm.name +
+        (isT ? ' (go here)' : '') + '</span><em>' + mins + 'm</em>');
+      row.dataset.go = lm.id;
+      row.addEventListener('click', () => goTo(lm));
+      legend.appendChild(row);
     });
     const [px,py] = toMap(player.x, player.z);
     const dx = Math.sin(player.angle), dy = Math.cos(player.angle);
@@ -1737,6 +1814,25 @@ HS.Game = function(){
     return gaps[0][1];
   };
 
+  /* Roughly what the walk would have taken, so travelling is not free time. */
+  function travelMinutes(lm){
+    const d = Math.hypot(player.x - lm.x, player.z - lm.z);
+    return Math.max(4, Math.round(d / 13));
+  }
+
+  function goTo(lm){
+    const S = G.S;
+    if(S.ended) return;
+    const mins = travelMinutes(lm);
+    $('bigmap').classList.remove('show');
+    player.setPos(lm.x, lm.z + 3);
+    G.spendTime(mins / 60);
+    world.update(0, S.hour, player.x, player.z, true);
+    HS.Audio.enter();
+    ui.toast('You walk over to ' + lm.name + '. ' + mins + ' minutes gone.', '');
+    ui.syncHud(); HS.save(S);
+  }
+
   G.objectiveText = function(){
     const S = G.S;
     if(S.ended) return 'The story is over.';
@@ -1745,6 +1841,14 @@ HS.Game = function(){
     if(S.flags.kadePending) return 'Someone is waiting for you at The Ticker Bar.';
     if(!S.path) return 'Finish the week. Friday evening they decide what you are.';
     if(HS.weekOf(S.day) === 1) return 'End the week green. Week P&L ' + HS.signed(S.weekPnl) + '.';
+    /* A date somebody is holding you to beats a ladder that will wait. */
+    const j = HS.jobUrgent(S);
+    if(j){
+      const t = HS.jobTemplate(j.id), pr = HS.jobProgress(S, j);
+      const left = j.due - S.day;
+      return (t ? t.from : 'A job') + ': ' + pr.text + '. ' +
+             (left <= 0 ? 'Due today.' : left === 1 ? 'One day left.' : left + ' days left.');
+    }
     const nr = HS.nextRank(S);
     if(!nr) return 'You have arrived.';
     const miss = HS.needText(S, nr.need).filter(n => !n.ok);

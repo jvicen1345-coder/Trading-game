@@ -266,6 +266,7 @@ HS.Pad = function(game, input){
       if(hit(g, B.l1))       key('[');
       if(hit(g, B.r1))       key(']');
       if(hit(g, B.share))    key('h');
+      if(hit(g, B.l3))       key('j');   /* messages */
     }
 
     prev = g.buttons.map(b => b.pressed);

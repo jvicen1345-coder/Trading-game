@@ -617,6 +617,9 @@ HS.advanceTime = function(S, hours){
 };
 
 HS.rollDay = function(S, ev){
+  /* Deadlines, standing goals and whoever is about to call. Done first so a
+     job that came due today is settled before anything else in the morning. */
+  if(HS.jobsDaily) HS.jobsDaily(S, ev);
   S.day++;
   S.stats.daysPlayed++;
   S.workedToday = S.studiedToday = S.networkedToday = false;

@@ -148,6 +148,29 @@ body.touch.portrait #rotate{display:flex;}
 .meet-say{flex:1 1 0;min-width:0;}
 .meet-say > p:first-child{margin-top:0;}
 
+/* ---------------- the phone ---------------- */
+/* the map legend doubles as a way to get there */
+.map-go{display:flex;align-items:center;gap:7px;width:100%;text-align:left;
+  padding:5px 8px;border-radius:8px;border:1px solid transparent;color:var(--dim);
+  font-size:11px;transition:.12s;}
+.map-go span{flex:1 1 auto;}
+.map-go em{font-style:normal;font-family:var(--mono);font-size:9px;color:var(--faint);}
+.map-go:hover{color:var(--text);border-color:var(--gold);background:rgba(232,184,92,.08);}
+.map-go.obj{color:var(--gold);}
+
+.jobs{display:flex;flex-direction:column;gap:8px;margin:4px 0 2px;}
+.job{display:flex;flex-direction:column;gap:4px;padding:9px 11px;border-radius:10px;
+  border:1px solid var(--border);background:rgba(255,255,255,.028);}
+.job.due{border-color:var(--gold);background:rgba(232,184,92,.08);}
+.job b{font-size:12px;}
+.job .j-ask{font-size:11px;line-height:1.45;color:var(--dim);}
+.job .j-prog{display:flex;align-items:center;gap:8px;font-family:var(--mono);
+  font-size:10px;color:var(--dim);}
+.job .j-bar{flex:0 0 150px;height:4px;border-radius:3px;background:#0A0D13;overflow:hidden;}
+.job .j-bar span{display:block;height:100%;border-radius:3px;background:var(--gold);}
+.job .j-due{font-size:8.5px;letter-spacing:1.2px;font-weight:700;color:var(--faint);}
+.job.due .j-due{color:var(--gold);}
+
 /* ---------------- the roster line-up ---------------- */
 /* Your people read as a row of faces rather than a list of rows. Five of
    these fit a desk, and on a phone the row scrolls sideways rather than
@@ -784,9 +807,10 @@ body.pad .act:hover:not(.locked){transform:none;}
       <kbd>Shift</kbd><span>Sprint (walking and running are free)</span>
       <kbd>E</kbd><span>Enter the building you are standing at</span>
       <kbd>Esc</kbd><span>Menu · close a panel</span>
-      <kbd>Tab</kbd><span>Open the full city map</span>
+      <kbd>Tab</kbd><span>Open the full city map, and walk anywhere on it</span>
       <kbd>P</kbd><span>Perk trees</span>
       <kbd>[ ]</kbd><span>Zoom the camera</span>
+      <kbd>J</kbd><span>Messages: work people want doing</span>
       <kbd>M</kbd><span>Mute</span>
     </div>
     <p class="pbody"><b>A controller works too.</b> Plug in a DualSense, an Xbox pad or
@@ -999,6 +1023,7 @@ body.pad .act:hover:not(.locked){transform:none;}
 <script src="src/world.js"></script>
 <script src="src/player.js"></script>
 <script src="src/input.js"></script>
+<script src="src/jobs.js"></script>
 <script src="src/faces.js"></script>
 <script src="src/gamepad.js"></script>
 <script src="src/ui.js"></script>
